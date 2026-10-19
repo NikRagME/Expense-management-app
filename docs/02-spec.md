@@ -22,7 +22,8 @@ reserves room for them (§9).
 
 | Term | Meaning |
 |---|---|
-| **Account** | A place her money lives: Citibank, SFCU Checking, SFCU Credit Card, Venmo. There is also one **virtual account**, *Paid by parent*, for costs paid on her behalf. |
+| **Account** | A place her money lives. It starts with Citibank, SFCU Checking, SFCU Credit Card and Venmo, and **more can be added at any time** (§4.4). There is also one **virtual account**, *Paid by parent*, for costs paid on her behalf. |
+| **Balance** | How much is in an account (or, for the credit card, how much is owed), as of a given date (§4.5). |
 | **Transaction** | One line of money in or out of an account, from a statement import or manual entry. |
 | **Kind** | What a transaction *means*. This is the heart of "one trustworthy view" (see below). |
 | **Category** | What the spending was *for*: Groceries, Eating out, and so on. Applies to spending kinds only. A transaction has one category by default, or can be **split** across several (§5.3). |
@@ -116,6 +117,47 @@ The parent records costs paid on her behalf, in the virtual *Paid by parent* acc
 - **One-off:** for example a textbook order.
 - **Recurring:** for example "Phone plan, $45, monthly on the 15th". The app adds each month's entry
   automatically, and it can be edited or skipped. **[A4]**
+
+### 4.4 Adding accounts later
+
+The four starting accounts are just the initial setup. **Either user can add accounts at any time,
+for any number of accounts**, e.g. a new savings account, a second credit card, Cash App or PayPal,
+or a cash wallet.
+
+- **Account types:** Checking · Savings · Credit card · Payment app (Venmo-like) · Cash · Other.
+  The type decides default behaviour: a credit card's balance is shown as *owed*, and a payment
+  app gets Venmo-style repayment handling.
+- **A new account works exactly like the starting ones:** its own import mapping (set on the first
+  import), transfer matching with every other account, and its own balance.
+- **Archive, not delete:** a closed account is archived. Its history stays in all past totals, and
+  it disappears from pickers and the Home balances.
+- Nothing in the app is hard-coded to the four starting accounts or to specific banks.
+
+### 4.5 Account balances
+
+Every real account shows a **current balance**, with an **"as of" date** so it's clear how fresh it is.
+
+**How a balance is known:**
+1. **From the statement:** OFX/QFX files contain the bank's own balance, and many CSVs have a
+   running-balance column. When present, the import records it automatically.
+2. **Entered by hand:** "My SFCU Checking balance today is $412.30". This takes a few seconds from the
+   bank's app and is needed at least once per account to set a starting point.
+3. **Between known balances,** the app rolls forward: latest known balance + transactions imported after it.
+
+**Balance check (reconciliation):**
+- When a new known balance arrives (from a statement or typed in), the app compares it with its own
+  calculation.
+- **If they match:** ✓ "Balanced". This is a strong signal the data is complete.
+- **If they differ:** "Off by $23.10 — something may be missing or duplicated since Oct 2" with a link to that
+  period's transactions. The bank's figure always wins for the displayed balance. The difference
+  is flagged, never silently absorbed.
+
+**Display rules:**
+- Checking, savings, Venmo and cash show money available.
+- The credit card shows the **amount owed**, labelled as such (never as negative money).
+- Home shows a **"Net position"** line: cash across her accounts − card owed.
+- *Paid by parent* has no balance.
+- Phase 4 adds the credit limit, utilisation, statement amount and due date on top of this.
 
 ---
 
@@ -218,9 +260,12 @@ The one-minute answer to her three questions.
 │  Life          █      $95   │
 │  … see all                › │
 │                             │
-│  BY ACCOUNT                 │
-│  SFCU Card $520 · Venmo $190│
-│  Citi $92 · SFCU Chk $40    │
+│  BY ACCOUNT    spent  balance│
+│  SFCU Card     $520  $310 owed│
+│  Venmo         $190     $24 │
+│  Citi           $92    $618 │
+│  SFCU Chk       $40    $412 │
+│  Net position          $744 │
 │                             │
 │  Last updated: Citi 2d ago, │
 │  Venmo 9d ago ⚠             │
@@ -235,6 +280,8 @@ The one-minute answer to her three questions.
 - **Category bars:**
   - groups first; tap a group to see its categories
   - tap a category to see its transactions (S3, pre-filtered).
+- **By account:** each account's spending for the period, plus its current balance
+  (✓ when the last balance check matched). Tap an account for its transactions.
 - **Freshness line:** shows when each account was last imported, and flags any account not updated in
   more than 7 days. This is what makes the totals trustworthy.
 - **Playful touch** (light, for Phase 1): friendly copy, plus an "All caught up 🎉" state when nothing needs attention.
@@ -339,12 +386,13 @@ A focused queue, one card at a time. This keeps the weekly tidy-up fast.
 When the queue is empty: "All caught up 🎉".
 
 ### S8 · Accounts
-- The 4 real accounts plus *Paid by parent*.
-- Each one shows the institution, type, last import date and "transactions through" date.
-- **Add / edit / archive** accounts, so a new card or bank later is easy. Includes the saved import
-  mapping for each account.
-- **Balances: not shown in Phase 1.** Statement CSVs don't reliably include balances, and the
-  card-health features in Phase 4 will add them properly. **[A8]**
+- All real accounts plus *Paid by parent*.
+- Each one shows the institution, type, **current balance (as of date, ✓ if balanced)**, last
+  import date and "transactions through" date.
+- **"Update balance"** button: type the balance shown in the bank's app, and the app runs the
+  balance check (§4.5). **[A8]**
+- **Add account** at any time (§4.4): name, institution, type and an optional starting balance.
+- **Edit / archive** accounts, and view or reset each account's saved import mapping.
 
 ### S9 · Paid by parent (parent-focused)
 - A list of parent-paid costs by month.
@@ -363,7 +411,7 @@ When the queue is empty: "All caught up 🎉".
 
 ### F1 · First-time setup (parent + daughter, together, ~20 min)
 1. Parent signs in and adds the daughter's Google email to the allow-list.
-2. Create the 4 accounts, and set the parent's Zelle name.
+2. Create the 4 starting accounts with today's balance for each, and set the parent's Zelle name.
 3. Import one statement per account (the column mapping is confirmed once).
 4. Review the first batch together. This is the moment most rules get created.
 5. Parent adds recurring parent-paid costs (rent, phone, etc.).
@@ -373,7 +421,7 @@ When the queue is empty: "All caught up 🎉".
 1. Download recent transactions from Citi, SFCU (checking and card) and Venmo.
 2. Import each file. Transfers auto-match and rules auto-categorise.
 3. Clear the Review queue.
-4. Glance at Home → "All caught up 🎉".
+4. Glance at Home → balances show ✓ and "All caught up 🎉".
 
 *(Phase 2 turns step 4 into the weekly reflection ritual.)*
 
@@ -419,7 +467,7 @@ Phase 1 does not build these, but the data model includes the fields so later ph
   - receipt attachments
   - email and SMS alert ingestion.
 - **Phase 4:**
-  - account balances and credit limit, and statement due dates
+  - credit limit, utilisation, statement amount and due dates (built on Phase 1 balances)
   - savings goals
   - streaks and badges.
 
@@ -428,7 +476,7 @@ Phase 1 does not build these, but the data model includes the fields so later ph
 ## 10. Out of scope for Phase 1
 
 Budgets, ratings, need/want tags, weekly reflection, insights, notifications or reminders, receipts,
-email or SMS capture, bank sync, balances and credit health, goals, gamification beyond friendly copy,
+email or SMS capture, bank sync, credit health (limit, utilisation, due dates), goals, gamification beyond friendly copy,
 multiple currencies.
 
 ---
@@ -439,13 +487,14 @@ multiple currencies.
 |---|---|---|---|
 | **A1** | Who can sign in | Accepted | Exactly two Google accounts on an allow-list |
 | **A2** | Statement formats | **Deferred** | Sample files from Citi, SFCU checking, the SFCU card and Venmo will be collected later. The importer is built with a configurable column mapping, so it doesn't depend on knowing the formats up front; it will be tuned once real files arrive. |
-| **A3** | Manual entry vs import | Accepted | Suggest a merge when the same account and amount appear within ±3 days |
-| **A4** | Recurring parent-paid costs | Accepted | Added automatically each period; each one can be edited or skipped |
+| **A3** | Manual entry vs import | **Confirmed** | Suggest a merge when the same account and amount appear within ±3 days |
+| **A4** | Recurring parent-paid costs | **Confirmed** | Added automatically each period; each one can be edited or skipped |
 | **A5** | Incoming Venmo from friends | **Open** | Not decided yet. Interim behaviour: always ask in the Review queue (the safe option, since nothing is guessed). Built as a **setting**, so it can switch to "default to Repayment" once we see real usage. |
-| **A6** | Default categories | Accepted | The list in §5.2 |
+| **A6** | Default categories | **Confirmed** | The list in §5.2 |
 | **A7** | What a "month" is | **Open** | Calendar month by default; all totals work on arbitrary date ranges so the definition can change later (§6, S2) |
-| **A8** | Account balances | Accepted | Not in Phase 1 (added in Phase 4) |
-| **A9** | Offline | Accepted | Not required in Phase 1 |
+| **A8** | Account balances | **Decided: in Phase 1** | Balances per account, from statements or typed in, with a balance check (§4.5) |
+| **A9** | Offline | **Confirmed** | Not required in Phase 1 |
+| **A11** | Adding accounts | **Decided** | Any number of accounts of any type can be added later; nothing is hard-coded to the starting four (§4.4) |
 | **A10** | Splitting a purchase | **Decided: in Phase 1** | One category by default, with a **Split** button to divide it across categories (§5.3) |
 
-"Accepted" means no change was requested to the proposed default; any of these can still be revisited.
+"Accepted" means no change was requested to the proposed default. Any decision can still be revisited.

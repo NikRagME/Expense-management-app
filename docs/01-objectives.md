@@ -72,7 +72,9 @@ architecture leaves room for them, and will be specced when we get there.
 ### Phase 1 — Visibility *(committed; ASAP)*
 Goal: **all three accounts in one accurate, single view of spending, from this month onward.**
 
-- Set up her 4 accounts: Citibank, SFCU bank, SFCU credit card and Venmo.
+- Set up her 4 accounts: Citibank, SFCU bank, SFCU credit card and Venmo. **More accounts can be
+  added at any time** (a new card, a savings account, another payment app).
+- **Account balances** for every account, kept accurate by checking against the bank's own figure.
 - Get transactions in by:
   - **importing statements** (CSV/OFX downloads from Citibank and SFCU; CSV from Venmo), with
     automatic duplicate detection
