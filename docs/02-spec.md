@@ -494,7 +494,7 @@ multiple currencies.
 | **A7** | What a "month" is | **Open** | Calendar month by default; all totals work on arbitrary date ranges so the definition can change later (§6, S2) |
 | **A8** | Account balances | **Decided: in Phase 1** | Balances per account, from statements or typed in, with a balance check (§4.5) |
 | **A9** | Offline | **Confirmed** | Not required in Phase 1 |
-| **A11** | Adding accounts | **Decided** | Any number of accounts of any type can be added later; nothing is hard-coded to the starting four (§4.4) |
 | **A10** | Splitting a purchase | **Decided: in Phase 1** | One category by default, with a **Split** button to divide it across categories (§5.3) |
+| **A11** | Adding accounts | **Decided** | Any number of accounts of any type can be added later; nothing is hard-coded to the starting four (§4.4) |
 
 "Accepted" means no change was requested to the proposed default. Any decision can still be revisited.
