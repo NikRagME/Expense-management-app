@@ -1,0 +1,429 @@
+# 02 — Product Spec (Phase 1: Visibility)
+
+> **Status:** Draft for review · **Stage:** 2 of 4 · Builds on [`01-objectives.md`](01-objectives.md)
+>
+> Items marked **[A#]** are assumptions I made. They are listed together in §11 for you to confirm or change.
+
+## 1. What Phase 1 delivers
+
+One trustworthy view of all her money in and out, across **Citibank, SFCU bank, the SFCU credit
+card, Venmo** and **costs paid by her parent**. It answers three questions in under a minute on her phone:
+
+1. **How much did I spend this month (or last month)?**
+2. **What did I spend it on?**
+3. **What does my life cost overall,** including what Dad/Mom pays?
+
+Phase 1 does **not** include budgets, ratings, need/want tags, receipts or automation. The data model
+reserves room for them (§9).
+
+---
+
+## 2. Key concepts
+
+| Term | Meaning |
+|---|---|
+| **Account** | A place her money lives: Citibank, SFCU Checking, SFCU Credit Card, Venmo. There is also one **virtual account**, *Paid by parent*, for costs paid on her behalf. |
+| **Transaction** | One line of money in or out of an account, from a statement import or manual entry. |
+| **Kind** | What a transaction *means*. This is the heart of "one trustworthy view" (see below). |
+| **Category** | What the spending was *for*: Groceries, Eating out, and so on. Applies to spending kinds only. |
+| **Merchant** | A cleaned-up payee name (`SQ *BLUE BOTTLE 0423 PALO ALTO` → *Blue Bottle*). |
+| **Rule** | "Always treat merchant X as category Y / kind Z." Created when she categorises something. |
+| **Import** | One uploaded statement file for one account. Can be undone as a whole. |
+| **Needs attention** | Transactions the app couldn't confidently classify. They wait for her (or the parent) to confirm. |
+
+### 2.1 Transaction kinds
+
+Every transaction has exactly one kind. Only some kinds count as spending.
+
+| Kind | Example | Counts toward |
+|---|---|---|
+| **Spend** | Chipotle on the SFCU card; paying a friend on Venmo for concert tickets | Her spending (+) |
+| **Refund** | Amazon return credited to the card | Her spending (−), in the same category |
+| **Repayment** | A friend pays her back on Venmo for their half of dinner | Her spending (−). Reduces the cost of the shared purchase. |
+| **Income** | Allowance via Zelle from the parent | Money in |
+| **Transfer** | Citibank → SFCU; paying the SFCU card bill; bank ↔ Venmo top-up or cash-out | **Nothing.** Money moved between her own accounts. |
+| **Parent-paid** | Parent pays her phone plan or rent directly | Cost of living only (not her spending) |
+
+**Definitions used everywhere in the app:**
+
+- **Her spending** = Spend − Refunds − Repayments, across her 4 real accounts.
+- **Cost of living** = Her spending + Parent-paid.
+- **Money in** = Income.
+
+---
+
+## 3. Users and permissions
+
+| | Daughter | Parent |
+|---|---|---|
+| Sign in with Google | ✓ | ✓ |
+| See everything | ✓ | ✓ |
+| Import statements, add or edit transactions | ✓ | ✓ |
+| Manage accounts, categories and rules | ✓ | ✓ |
+| Record parent-paid costs | ✓ (can view) | ✓ (primary) |
+
+- Only the two Google emails on an **allow-list** can sign in. **[A1]**
+- Every change records **who** made it and **when**, shown as "Edited by Dad · 2 days ago".
+  When both of you can edit, this avoids "who changed my category?" confusion.
+
+---
+
+## 4. Getting transactions in
+
+### 4.1 Statement import (primary)
+
+Weekly routine: log in to each bank or Venmo, download the recent transactions, upload them to the app.
+
+| Account | Expected format **[A2]** | Notes |
+|---|---|---|
+| Citibank | CSV (Citi's online banking download) | |
+| SFCU Checking | OFX/QFX preferred, CSV fallback | OFX includes unique transaction IDs, which makes duplicate detection exact |
+| SFCU Credit Card | OFX/QFX preferred, CSV fallback | |
+| Venmo | CSV (Venmo web → Statements) | Includes who, the note ("🍕 pizza"), and which account funded the payment |
+
+**Import flow:**
+
+1. Pick the account, or let the app guess from the file contents.
+2. **First time per account only:** confirm the column mapping (date, description, amount or
+   debit/credit, sign convention). The mapping is saved, so later imports are one tap.
+3. **Preview:**
+   - *N new* transactions
+   - *M duplicates* skipped (already imported)
+   - *K transfers* matched
+   - *J need attention*
+4. Confirm. The app shows a short summary: "38 new · 4 transfers matched · 3 need a look 👀".
+5. Any import can be **undone** in one step, which removes everything it added.
+
+**Duplicate detection:**
+
+- **OFX:** the bank's own transaction ID.
+- **CSV:** the same account + date + amount + description is treated as a duplicate.
+- Overlapping date ranges between imports are expected and handled. She doesn't need to track
+  exactly which dates she downloaded.
+
+### 4.2 Manual entry (secondary)
+
+For the occasional cash spend, or logging a purchase right away. Fields: amount, merchant/description,
+category, account (defaults to the last used), date (defaults to today), note.
+
+When a later statement import contains a line that looks like a manual entry (same account, same amount,
+date within ±3 days), the app **suggests merging** them so the purchase isn't counted twice. **[A3]**
+
+### 4.3 Parent-paid costs
+
+The parent records costs paid on her behalf, in the virtual *Paid by parent* account:
+
+- **One-off:** for example a textbook order.
+- **Recurring:** for example "Phone plan, $45, monthly on the 15th". The app adds each month's entry
+  automatically, and it can be edited or skipped. **[A4]**
+
+---
+
+## 5. Classification rules
+
+These rules make the single view trustworthy. When a rule isn't confident, the transaction goes to
+**Needs attention** instead of being guessed silently.
+
+| Situation | How it's recognised | Result |
+|---|---|---|
+| **Allowance** | Incoming Zelle whose description contains the parent's name (configured once) | Income · "Allowance" |
+| **Card bill payment** | SFCU card credit "PAYMENT" + matching debit from Citibank or SFCU checking (same amount, ±5 days) | Both sides → Transfer, linked as a pair |
+| **Between her bank accounts** | Debit in one bank + credit of the same amount in the other within ±5 days, or a description containing "TRANSFER" | Transfer pair |
+| **Venmo paid from a bank** | Bank line "VENMO" + Venmo row whose funding source is that bank, same amount | Bank line → Transfer. The **Venmo row is the Spend** (it has the who and the what). |
+| **Venmo top-up / cash-out** | Venmo "Standard Transfer" + matching bank line | Transfer pair |
+| **Friend pays her on Venmo** | Incoming Venmo payment from anyone other than the parent | **Needs attention**: "Is this a repayment for something you paid for, or something else?" Optionally link it to the original spend. **[A5]** |
+| **Card refund** | Credit on the card that isn't a payment | Refund, in the original merchant's category |
+| **Unmatched transfer-looking line** | A transfer description with no matching other side yet | Transfer (unconfirmed). It pairs up automatically once the other account is imported. |
+
+### 5.1 Categorisation
+
+1. Clean the merchant name (strip card-processor prefixes such as `SQ *`, `TST*` and `PAYPAL *`, plus
+   store numbers and city).
+2. If a **rule** exists for that merchant, apply it.
+3. Otherwise, apply **built-in keyword hints** (e.g. *Uber/Lyft* → Transport, *Safeway/Trader Joe's* →
+   Groceries).
+4. Otherwise, mark it **uncategorised** and send it to *Needs attention*.
+
+When she categorises a transaction from a new merchant, the app offers:
+"Always put **Blue Bottle** in **Coffee & snacks**?" → `Yes` / `Just this once`.
+
+Rules can be viewed, edited and deleted in Settings.
+
+### 5.2 Default categories **[A6]**
+
+| Group | Categories |
+|---|---|
+| Food | Groceries · Eating out · Coffee & snacks · Food delivery |
+| Getting around | Rideshare · Public transit · Gas & parking · Flights & travel |
+| Home | Rent & housing · Utilities · Phone & internet · Household supplies |
+| School | Tuition & fees · Books & supplies · Tech |
+| Life | Clothing · Personal care · Health & medical · Fitness |
+| Fun | Going out · Entertainment · Subscriptions · Hobbies · Gifts |
+| Other | Fees & interest · Miscellaneous |
+
+She can rename, add, hide or recolour any category. Groups are used for the overview roll-up.
+
+---
+
+## 6. Screens
+
+The app is designed mobile-first for her iPhone, with a bottom tab bar. On a laptop the same screens
+use a wider layout with a sidebar.
+
+```
+┌───────────────────────────────────────┐
+│  Home  │  Activity  │  ＋  │  Review(3) │  More  │
+└───────────────────────────────────────┘
+```
+
+### S1 · Sign in
+A friendly welcome and a "Continue with Google" button. Anyone not on the allow-list sees
+"This app is private" and cannot get in.
+
+### S2 · Home (Overview)
+The one-minute answer to her three questions.
+
+```
+┌─────────────────────────────┐
+│  ‹  October 2026  ›         │
+│                             │
+│  You spent                  │
+│  $842                       │
+│  ▲ $96 vs September         │
+│                             │
+│  Cost of living   $2,310    │
+│  (you $842 + parent $1,468) │
+│  Money in         $900      │
+│                             │
+│  👀 3 things need a look  › │
+│                             │
+│  WHERE IT WENT              │
+│  Food          ████▌  $310  │
+│  Fun           ██▌    $180  │
+│  Getting around █▌    $122  │
+│  Life          █      $95   │
+│  … see all                › │
+│                             │
+│  BY ACCOUNT                 │
+│  SFCU Card $520 · Venmo $190│
+│  Citi $92 · SFCU Chk $40    │
+│                             │
+│  Last updated: Citi 2d ago, │
+│  Venmo 9d ago ⚠             │
+└─────────────────────────────┘
+```
+
+- **Month switcher.** Calendar months. **[A7]**
+- **Cost of living** toggle: show her spending alone, or including parent-paid costs.
+- **Category bars:**
+  - groups first; tap a group to see its categories
+  - tap a category to see its transactions (S3, pre-filtered).
+- **Freshness line:** shows when each account was last imported, and flags any account not updated in
+  more than 7 days. This is what makes the totals trustworthy.
+- **Playful touch** (light, for Phase 1): friendly copy, plus an "All caught up 🎉" state when nothing needs attention.
+
+### S3 · Activity (all transactions)
+
+```
+┌─────────────────────────────┐
+│ 🔍 Search          [Filter] │
+│ Oct 2026 · All accounts     │
+│                             │
+│ TODAY                       │
+│ ☕ Blue Bottle      -$6.50  │
+│    Coffee · SFCU Card       │
+│ 🍕 Maya (Venmo)    -$18.00  │
+│    "pizza night" · Eating out│
+│ YESTERDAY                   │
+│ ↔ SFCU card payment  $400   │
+│    Transfer · not counted   │
+│ 💵 Allowance       +$300    │
+│    Income · Citibank        │
+│ 🏠 Rent (parent)   $1,200   │
+│    Paid by parent           │
+└─────────────────────────────┘
+```
+
+- One combined list across all accounts, newest first, grouped by day.
+- **Filters:** month or date range, account, category, kind, needs attention, "paid by parent".
+- **Search:** merchant, description, Venmo note.
+- Transfers are shown greyed out and labelled "not counted", so she understands why they don't add up.
+- The list shows a running total for the current filter, e.g. "Eating out in Oct: $142".
+
+### S4 · Transaction detail / edit
+
+- Amount, date, account, original bank description (read-only), cleaned merchant name.
+- **Kind** (Spend / Refund / Repayment / Income / Transfer), **Category** and **Note**.
+- **Linked items:** a transfer's other side; a repayment's original spend (e.g. "Maya paid back $18 of
+  your $36 dinner → your share was $18").
+- "Create rule for this merchant" prompt.
+- History: "Imported from SFCU Card · Oct 12 · Category changed by Dad, Oct 14".
+- Delete (manual entries only); "Exclude" for imported lines that should be ignored.
+
+### S5 · Quick add (＋)
+A big amount pad, then merchant, then category chips (her most-used first), then account and date
+(both defaulted). Save takes **3 taps plus typing**. Parents also see a "Paid by parent" toggle.
+
+### S6 · Import
+
+```
+┌─────────────────────────────┐
+│ Import a statement          │
+│                             │
+│ [ Choose file ]             │
+│                             │
+│ Detected: SFCU Credit Card  │
+│ Oct 1 – Oct 18              │
+│                             │
+│ ✓ 38 new                    │
+│ ⤼ 12 duplicates (skipped)   │
+│ ↔ 4 transfers matched       │
+│ 👀 3 need a look            │
+│                             │
+│ [ Import 38 transactions ]  │
+└─────────────────────────────┘
+```
+
+- **First time per account:** a column-mapping step with a live preview of the first 5 rows.
+- Includes "How to download this statement" help for each bank (Citi, SFCU, Venmo), with steps and
+  screenshots added once we've done it once with real files.
+- **Import history:** a list of past imports with date, account and row count, plus **Undo**.
+
+### S7 · Review (Needs attention)
+A focused queue, one card at a time. This keeps the weekly tidy-up fast.
+
+```
+┌─────────────────────────────┐
+│ 3 to review                 │
+│                             │
+│ 💸 +$18.00 from Maya (Venmo)│
+│ "pizza 🍕"  · Oct 14        │
+│                             │
+│ What is this?               │
+│ [ Paying me back ]          │
+│ [ Income / gift ]           │
+│ [ Something else ]          │
+│                             │
+│ Link to: 🍕 Pizza -$36 Oct 13│
+│                             │
+│          Skip ›             │
+└─────────────────────────────┘
+```
+
+**Card types:**
+- uncategorised spend (category chips + "always?")
+- incoming Venmo (§5)
+- possible duplicate or merge
+- unmatched transfer older than 7 days
+
+When the queue is empty: "All caught up 🎉".
+
+### S8 · Accounts
+- The 4 real accounts plus *Paid by parent*.
+- Each one shows the institution, type, last import date and "transactions through" date.
+- **Add / edit / archive** accounts, so a new card or bank later is easy. Includes the saved import
+  mapping for each account.
+- **Balances: not shown in Phase 1.** Statement CSVs don't reliably include balances, and the
+  card-health features in Phase 4 will add them properly. **[A8]**
+
+### S9 · Paid by parent (parent-focused)
+- A list of parent-paid costs by month.
+- **Recurring items:** name, amount, category, frequency and next date. Each can be paused or edited.
+- Monthly total, which feeds the Home "Cost of living" figure.
+
+### S10 · More / Settings
+- Categories (S10a), Rules (S10b), Accounts (S8), Paid by parent (S9).
+- Allowed users (the two Google emails) and the parent's Zelle name for allowance detection.
+- **Export:** all data as CSV, so the data is never locked in.
+- "Install on iPhone" help (Safari → Share → Add to Home Screen).
+
+---
+
+## 7. Key user flows
+
+### F1 · First-time setup (parent + daughter, together, ~20 min)
+1. Parent signs in and adds the daughter's Google email to the allow-list.
+2. Create the 4 accounts, and set the parent's Zelle name.
+3. Import one statement per account (the column mapping is confirmed once).
+4. Review the first batch together. This is the moment most rules get created.
+5. Parent adds recurring parent-paid costs (rent, phone, etc.).
+6. Daughter installs the app on her iPhone home screen.
+
+### F2 · Weekly update (daughter, target < 10 min)
+1. Download recent transactions from Citi, SFCU (checking and card) and Venmo.
+2. Import each file. Transfers auto-match and rules auto-categorise.
+3. Clear the Review queue.
+4. Glance at Home → "All caught up 🎉".
+
+*(Phase 2 turns step 4 into the weekly reflection ritual.)*
+
+### F3 · Shared dinner on Venmo
+1. She pays $36 on her SFCU card → **Spend**, Eating out.
+2. Maya pays her $18 on Venmo → the Review card asks what it is → "Paying me back", linked to the dinner.
+3. Home shows Eating out **+$18** (her real share).
+4. She later cashes out Venmo to SFCU → **Transfer**, not counted.
+
+### F4 · Parent adds a cost
+Parent → ＋ → toggles "Paid by parent" → "Textbook $89, Books & supplies" → it appears in her
+Cost of living, tagged "Paid by Dad".
+
+---
+
+## 8. Non-functional requirements
+
+| Area | Requirement |
+|---|---|
+| **Devices** | iPhone Safari as an installed PWA (primary); any modern desktop browser (parent) |
+| **Speed** | Home loads in < 2 s on a phone; an import of ~200 rows is processed in < 5 s |
+| **Offline** | Not required for Phase 1. Quick add *may* queue offline as a stretch goal. **[A9]** |
+| **Privacy** | Private by default. Only the 2 allow-listed users can sign in. All traffic over HTTPS; data encrypted at rest by the hosting provider. **No bank passwords are ever entered into or stored in the app.** |
+| **Backups** | Automatic daily backups, plus CSV export at any time |
+| **Accessibility** | Readable text sizes, sufficient contrast, colour never the only signal (bars are labelled with amounts) |
+| **Tone** | Playful and encouraging; never shaming. Spending increases are shown neutrally (▲ arrow, not red alarms). |
+| **Cost** | Within the near-free target (< $5/mo) |
+
+---
+
+## 9. Reserved for later phases (data model leaves room)
+
+Phase 1 does not build these, but the data model includes the fields so later phases need no rework:
+
+- **Phase 2:**
+  - on each transaction: `rating` (worth it / neutral / regret), `need_or_want`, and `budget_scope`
+    (in / outside / not sure yet)
+  - rules can also set `budget_scope`, which is how the agreed grey-area rules will apply
+    automatically
+  - budgets per category per month.
+- **Phase 3:**
+  - `source` on each transaction (import / manual / email / sms / receipt / bank-sync)
+  - receipt attachments
+  - email and SMS alert ingestion.
+- **Phase 4:**
+  - account balances and credit limit, and statement due dates
+  - savings goals
+  - streaks and badges.
+
+---
+
+## 10. Out of scope for Phase 1
+
+Budgets, ratings, need/want tags, weekly reflection, insights, notifications or reminders, receipts,
+email or SMS capture, bank sync, balances and credit health, goals, gamification beyond friendly copy,
+splitting one transaction across several categories, multiple currencies.
+
+---
+
+## 11. Assumptions to confirm
+
+| # | Assumption | Alternative |
+|---|---|---|
+| **A1** | Exactly two Google accounts on an allow-list | Add a second parent? |
+| **A2** | Citi, SFCU and Venmo all offer CSV (and SFCU offers OFX/QFX) downloads | **Action:** please download one sample file from each (I'll design the importer around real files; amounts can be redacted) |
+| **A3** | Manual entries are matched to later imports (same account, same amount, ±3 days) | Keep them separate |
+| **A4** | Recurring parent-paid costs are added automatically each period | Parent enters each one manually |
+| **A5** | Incoming Venmo from friends always asks rather than guessing | Default every incoming payment to "Repayment" |
+| **A6** | The default category list in §5.2 | Edit the list |
+| **A7** | Calendar months (1st–end) | Month runs from allowance day to allowance day |
+| **A8** | No account balances in Phase 1 | Show the balance from the latest statement |
+| **A9** | Offline not required in Phase 1 | Make quick add work offline |
+| **A10** | Splitting one purchase across categories (e.g. Target: groceries + clothing) is not supported in Phase 1 | Add simple splits to Phase 1 |
