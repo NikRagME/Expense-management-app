@@ -1,0 +1,30 @@
+// Cloudflare Worker config (architecture §3). See docs/SETUP.md for first-time setup.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "expense-app",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-09-15",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/auth/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "expense-db",
+      // Replace with the id printed by `npx wrangler d1 create expense-db`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "expense-backups" }],
+  "triggers": { "crons": ["17 10 * * *"] },
+  "vars": {
+    // Public OAuth client id (not a secret). GOOGLE_CLIENT_SECRET and ALLOWED_USERS are secrets.
+    "GOOGLE_CLIENT_ID": "",
+    "DEV_LOGIN": "false"
+  },
+  "observability": { "enabled": true }
+}

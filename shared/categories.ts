@@ -1,0 +1,63 @@
+/** Default category groups and categories (spec §5.2). IDs are stable slugs. */
+
+export const DEFAULT_GROUPS: { id: string; name: string }[] = [
+  { id: 'food', name: 'Food' },
+  { id: 'getting_around', name: 'Getting around' },
+  { id: 'home', name: 'Home' },
+  { id: 'school', name: 'School' },
+  { id: 'life', name: 'Life' },
+  { id: 'fun', name: 'Fun' },
+  { id: 'other', name: 'Other' },
+];
+
+export const DEFAULT_CATEGORIES: { id: string; group: string; name: string; emoji: string }[] = [
+  { id: 'groceries', group: 'food', name: 'Groceries', emoji: '🛒' },
+  { id: 'eating_out', group: 'food', name: 'Eating out', emoji: '🍽️' },
+  { id: 'coffee_snacks', group: 'food', name: 'Coffee & snacks', emoji: '☕' },
+  { id: 'food_delivery', group: 'food', name: 'Food delivery', emoji: '🛵' },
+  { id: 'rideshare', group: 'getting_around', name: 'Rideshare', emoji: '🚗' },
+  { id: 'transit', group: 'getting_around', name: 'Public transit', emoji: '🚆' },
+  { id: 'gas_parking', group: 'getting_around', name: 'Gas & parking', emoji: '⛽' },
+  { id: 'travel', group: 'getting_around', name: 'Flights & travel', emoji: '✈️' },
+  { id: 'rent', group: 'home', name: 'Rent & housing', emoji: '🏠' },
+  { id: 'utilities', group: 'home', name: 'Utilities', emoji: '💡' },
+  { id: 'phone_internet', group: 'home', name: 'Phone & internet', emoji: '📱' },
+  { id: 'household', group: 'home', name: 'Household supplies', emoji: '🧻' },
+  { id: 'tuition', group: 'school', name: 'Tuition & fees', emoji: '🎓' },
+  { id: 'books', group: 'school', name: 'Books & supplies', emoji: '📚' },
+  { id: 'tech', group: 'school', name: 'Tech', emoji: '💻' },
+  { id: 'clothing', group: 'life', name: 'Clothing', emoji: '👕' },
+  { id: 'personal_care', group: 'life', name: 'Personal care', emoji: '🧴' },
+  { id: 'health', group: 'life', name: 'Health & medical', emoji: '🩺' },
+  { id: 'fitness', group: 'life', name: 'Fitness', emoji: '🏋️' },
+  { id: 'going_out', group: 'fun', name: 'Going out', emoji: '🎉' },
+  { id: 'entertainment', group: 'fun', name: 'Entertainment', emoji: '🎬' },
+  { id: 'subscriptions', group: 'fun', name: 'Subscriptions', emoji: '🔁' },
+  { id: 'hobbies', group: 'fun', name: 'Hobbies', emoji: '🎨' },
+  { id: 'gifts', group: 'fun', name: 'Gifts', emoji: '🎁' },
+  { id: 'fees', group: 'other', name: 'Fees & interest', emoji: '🧾' },
+  { id: 'misc', group: 'other', name: 'Miscellaneous', emoji: '📦' },
+  { id: 'allowance', group: 'other', name: 'Allowance', emoji: '💵' },
+];
+
+/** Built-in keyword hints used when no user rule matches (spec §5.1 step 3). */
+export const CATEGORY_HINTS: [RegExp, string][] = [
+  [/uber ?eats|doordash|grubhub|postmates|caviar/i, 'food_delivery'],
+  [/uber|lyft|waymo/i, 'rideshare'],
+  [/caltrain|\bbart\b|clipper|\bvta\b|\bmuni\b|amtrak/i, 'transit'],
+  [/\bshell\b|chevron|exxon|\barco\b|valero|parking|parkmobile/i, 'gas_parking'],
+  [/airline|\bunited\b|\bdelta\b|southwest|jetblue|alaska air|airbnb|hotel|expedia/i, 'travel'],
+  [/safeway|trader joe|whole foods|costco|sprouts|grocery|market|kroger|aldi|lucky/i, 'groceries'],
+  [/starbucks|peet'?s|blue bottle|philz|coffee|\bcafe\b|boba|\btea\b|donut|bakery/i, 'coffee_snacks'],
+  [/chipotle|mcdonald|pizza|burger|taco|sushi|restaurant|grill|kitchen|diner|panda|subway|sweetgreen|\bcava\b/i, 'eating_out'],
+  [/spotify|netflix|hulu|disney|youtube|apple\.com|icloud|chatgpt|patreon|prime video/i, 'subscriptions'],
+  [/\bamc\b|cinema|theater|ticketmaster|eventbrite|steam|playstation|xbox|nintendo/i, 'entertainment'],
+  [/cvs|walgreens|pharmacy|clinic|medical|dental|vaden/i, 'health'],
+  [/sephora|\bulta\b|salon|barber/i, 'personal_care'],
+  [/\bgym\b|fitness|yoga|peloton|climb/i, 'fitness'],
+  [/bookstore|textbook|chegg|staples/i, 'books'],
+  [/at&t|verizon|t-mobile|comcast|xfinity|mint mobile/i, 'phone_internet'],
+  [/pg&e|pge|utility|water|electric/i, 'utilities'],
+  [/uniqlo|h&m|zara|nike|adidas|\bgap\b|old navy|nordstrom/i, 'clothing'],
+  [/interest charge|late fee|annual fee|service fee|foreign transaction/i, 'fees'],
+];

@@ -1,0 +1,4 @@
+# Copy to .dev.vars for local development (never commit .dev.vars).
+DEV_LOGIN=true
+ALLOWED_USERS=daughter@example.com:daughter,parent@example.com:parent
+GOOGLE_CLIENT_SECRET=

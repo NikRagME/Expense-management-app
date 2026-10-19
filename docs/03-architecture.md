@@ -1,6 +1,6 @@
 # 03 — Architecture
 
-> **Status:** Draft for review · **Stage:** 3 of 4 · Implements [`02-spec.md`](02-spec.md) (Phase 1)
+> **Status:** Approved · **Stage:** 3 of 4 · Implements [`02-spec.md`](02-spec.md) (Phase 1)
 >
 > Decisions marked **[D#]** are summarised in §14 for confirmation.
 
