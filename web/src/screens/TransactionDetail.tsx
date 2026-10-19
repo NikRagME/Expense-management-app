@@ -39,7 +39,7 @@ function Detail({ tx }: { tx: TxDetail }) {
   const transferLink = tx.links.find((l) => l.type === 'transfer');
   const repaymentLink = tx.links.find((l) => l.type === 'repayment' && l.direction === 'out');
   const repaidBy = tx.links.filter((l) => l.type === 'repayment' && l.direction === 'in');
-  const kinds: Kind[] = tx.accountType === 'parent_paid' ? ['parent_paid'] : tx.amountCents < 0 ? ['spend', 'transfer'] : ['income', 'refund', 'repayment', 'transfer'];
+  const kinds: Kind[] = tx.accountType === 'parent_paid' ? ['parent_paid'] : tx.amountCents < 0 ? ['spend', 'parent_paid', 'transfer'] : ['income', 'refund', 'repayment', 'transfer'];
   const error = patch.error ?? unsplit.error ?? link.error ?? unlink.error ?? remove.error;
 
   return (

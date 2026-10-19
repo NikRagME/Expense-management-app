@@ -8,7 +8,10 @@ import {
   type Me,
   type Overview,
   type RecurringItem,
+  type HistoryImportRecord,
   type ReviewItem,
+  type SetupStatus,
+  type SheetRowDto,
   type Rule,
   type SettingsDto,
   type TxDetail,
@@ -27,7 +30,11 @@ export const useTransactions = (params: Record<string, string | undefined>) => {
 };
 export const useTransaction = (id: string | undefined) =>
   useQuery({ queryKey: ['tx', id], queryFn: () => api<TxDetail>(`/transactions/${id}`), enabled: !!id });
-export const useReview = () => useQuery({ queryKey: ['review'], queryFn: () => api<{ items: ReviewItem[]; count: number }>('/review') });
+export const useReview = () => useQuery({ queryKey: ['review'], queryFn: () => api<{ items: ReviewItem[]; sheetRows: SheetRowDto[]; count: number }>('/review') });
+export const useSetup = () => useQuery({ queryKey: ['setup'], queryFn: () => api<SetupStatus>('/setup') });
+export const useHistoryImports = () => useQuery({ queryKey: ['history'], queryFn: () => api<HistoryImportRecord[]>('/history') });
+export const useHistoryMappings = () =>
+  useQuery({ queryKey: ['history-mappings'], queryFn: () => api<{ categories: Record<string, string>; accounts: Record<string, string> }>('/history/mappings') });
 export const useImports = () => useQuery({ queryKey: ['imports'], queryFn: () => api<ImportRecord[]>('/imports') });
 export const useRules = () => useQuery({ queryKey: ['rules'], queryFn: () => api<Rule[]>('/rules') });
 export const useRecurring = () => useQuery({ queryKey: ['recurring'], queryFn: () => api<RecurringItem[]>('/recurring') });

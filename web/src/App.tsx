@@ -18,6 +18,8 @@ import { QuickAdd } from './screens/QuickAdd';
 import { Review } from './screens/Review';
 import { Rules } from './screens/Rules';
 import { Settings } from './screens/Settings';
+import { Setup } from './screens/Setup';
+import { SpreadsheetImport } from './screens/SpreadsheetImport';
 import { TransactionDetail } from './screens/TransactionDetail';
 
 export function App() {
@@ -45,6 +47,8 @@ export function App() {
         <Route path="/more/rules" element={<Rules />} />
         <Route path="/more/parent-paid" element={<ParentPaid />} />
         <Route path="/more/settings" element={<Settings />} />
+        <Route path="/setup" element={<Setup />} />
+        <Route path="/setup/spreadsheet" element={<SpreadsheetImport />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

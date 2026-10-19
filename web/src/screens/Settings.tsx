@@ -6,8 +6,12 @@ import { Button, Card, ErrorText, Field, Input, Loading, PageHeader, SectionTitl
 export function Settings() {
   const q = useSettings();
   const [names, setNames] = useState('');
+  const [own, setOwn] = useState('');
   useEffect(() => {
-    if (q.data) setNames(q.data.parentZelleNames.join(', '));
+    if (q.data) {
+      setNames(q.data.parentZelleNames.join(', '));
+      setOwn((q.data.ownNames ?? []).join(', '));
+    }
   }, [q.data]);
   const save = useApiMutation((body: Record<string, unknown>) => api('/settings', { method: 'PATCH', body }));
   const logout = async (everywhere = false) => {
@@ -23,14 +27,25 @@ export function Settings() {
       <ErrorText error={q.error ?? save.error} />
 
       <Card className="space-y-3">
-        <SectionTitle>Allowance</SectionTitle>
-        <Field label="Parent's name as it appears on Zelle" hint="Incoming Zelle or Venmo payments with this name count as allowance (income). Separate several with commas.">
-          <Input value={names} onChange={(e) => setNames(e.target.value)} placeholder="e.g. Nikhil" />
+        <SectionTitle>Names, as banks show them</SectionTitle>
+        <Field
+          label="Parent's full name"
+          hint="Use first and last name (banks often cut names short, e.g. JORDAN RIVER). Zelle or Venmo money from this person counts as allowance. Separate several with commas."
+        >
+          <Input value={names} onChange={(e) => setNames(e.target.value)} placeholder="e.g. Jordan Riverton" />
+        </Field>
+        <Field label="Her full name" hint="Zelle between her own accounts (e.g. Citi → SFCU) then counts as a transfer, not spending.">
+          <Input value={own} onChange={(e) => setOwn(e.target.value)} placeholder="e.g. Alex Riverton" />
         </Field>
         <Button
           variant="primary"
           disabled={save.isPending}
-          onClick={() => save.mutate({ parentZelleNames: names.split(',').map((n) => n.trim()).filter(Boolean) })}
+          onClick={() =>
+            save.mutate({
+              parentZelleNames: names.split(',').map((n) => n.trim()).filter(Boolean),
+              ownNames: own.split(',').map((n) => n.trim()).filter(Boolean),
+            })
+          }
         >
           Save
         </Button>

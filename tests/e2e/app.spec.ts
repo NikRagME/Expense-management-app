@@ -55,7 +55,7 @@ test('signs in, sets up accounts, imports statements, reviews and sees the pictu
 
   // Allowance detection.
   await page.goto('/more/settings');
-  await page.getByLabel(/Parent's name/).fill('Nikhil');
+  await page.getByLabel(/Parent's full name/).fill('Jordan');
   await page.getByRole('button', { name: 'Save' }).click();
 
   // F2: import Citi (separate debit/credit columns are detected).
@@ -63,7 +63,7 @@ test('signs in, sets up accounts, imports statements, reviews and sees the pictu
   await page.getByLabel('Account').selectOption({ label: 'Citi Checking' });
   await page.getByLabel(/Statement file/).setInputFiles(path.join(fixtures, 'citi.csv'));
   await expect(page.getByText('Match the columns (first time only)')).toBeVisible();
-  await expect(page.getByText('Zelle From Nikhil R').or(page.getByText('ZELLE FROM NIKHIL R')).first()).toBeVisible();
+  await expect(page.getByText('Zelle From Jordan R').or(page.getByText('ZELLE FROM JORDAN R')).first()).toBeVisible();
   await page.getByRole('button', { name: 'Preview import' }).click();
   await expect(page.getByText('✓ 7 new')).toBeVisible();
   await shot(page, '03-import-preview');

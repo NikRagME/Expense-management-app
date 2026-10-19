@@ -67,15 +67,23 @@ Pushes to `main` will then test and deploy automatically.
    - **Secrets:** `CLOUDFLARE_API_TOKEN` (the token) and `CLOUDFLARE_ACCOUNT_ID` (shown in the Cloudflare dashboard sidebar)
    - **Variables:** `DEPLOY_ENABLED` = `true`
 
-## 4. First-time setup in the app (flow F1, together, ~20 min)
+## 4. First-time setup in the app (flow F1, together, ~30–45 min)
 
-1. **More → Accounts → + Add**: Citi Checking, SFCU Checking, SFCU Card (credit card) and Venmo (payment app).
-   Enter today's balance for each, read from the bank's app.
-2. **More → Settings**: enter your name as it appears on Zelle (for allowance detection).
-3. **Import** one recent statement per account. The first CSV import for each account asks you to match the columns once.
-4. **Review**: clear the queue together. This is when most "Always put X in Y?" rules get created.
-5. **More → Paid by parent**: add recurring costs you pay (rent, phone plan…).
+1. **More → Settings**: enter **your full name** and **her full name** as banks show them. This is how the allowance and her transfers to herself are recognised.
+2. **More → Accounts → + Add**: Citi Checking, Citi Savings, SFCU Checking, SFCU Card (credit card) and Venmo (payment app).
+   You don't need balances here; statements provide them.
+3. **More → Set up history** walks through the rest:
+   1. **Opening day:** a Citi PDF statement fills this in by itself; for others, enter the date and the balance at opening (usually $0).
+   2. **Statements back to opening:** import every monthly statement from opening day to today.
+      - Citi: the monthly **PDF** (one file covers checking and savings).
+      - SFCU and Venmo: CSV or QFX downloads.
+   3. **Her spreadsheet:** in Google Sheets, *File → Download → Microsoft Excel (.xlsx)*, then upload it. Check the column, account and category matches; "OoB" and "PP" are pre-set to *Paid by parent*. Preview, then apply.
+   4. **Balances:** enter today's balance for each account from the bank's app. ✓ means everything adds up from opening day.
+4. **Review**: clear what's left together. This is when most "Always put X in Y?" rules get created.
+5. **More → Paid by parent**: add recurring costs you pay directly (rent, phone…).
 6. On her iPhone: open the URL in **Safari → Share → Add to Home Screen**.
+
+Any import or spreadsheet can be undone from **More → Import history**.
 
 ## Local development
 

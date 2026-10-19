@@ -10,14 +10,14 @@ describe('CSV', () => {
   });
 
   it('guesses a single signed amount column (Citi-style)', () => {
-    const text = 'Status,Date,Description,Debit,Credit\nCleared,10/02/2026,"TRADER JOE S #123",45.10,\nCleared,10/03/2026,ZELLE FROM NIKHIL,,300.00\n';
+    const text = 'Status,Date,Description,Debit,Credit\nCleared,10/02/2026,"TRADER JOE S #123",45.10,\nCleared,10/03/2026,ZELLE FROM JORDAN,,300.00\n';
     const mapping = guessMapping(parseCsvText(text));
     expect(mapping).toMatchObject({ skipRows: 0, dateCol: 1, descriptionCol: 2, debitCol: 3, creditCol: 4 });
     const { rows, errors } = parseCsv(text, mapping);
     expect(errors).toEqual([]);
     expect(rows).toEqual([
       { date: '2026-10-02', amountCents: -4510, description: 'TRADER JOE S #123' },
-      { date: '2026-10-03', amountCents: 30000, description: 'ZELLE FROM NIKHIL' },
+      { date: '2026-10-03', amountCents: 30000, description: 'ZELLE FROM JORDAN' },
     ]);
   });
 
@@ -54,7 +54,7 @@ DATA:OFXSGML
 <DTPOSTED>20261006
 <TRNAMT>300.00
 <FITID>202610060002
-<NAME>ZELLE FROM NIKHIL &amp; CO
+<NAME>ZELLE FROM JORDAN &amp; CO
 </STMTTRN>
 </BANKTRANLIST>
 <LEDGERBAL>
@@ -70,7 +70,7 @@ describe('OFX', () => {
     const s = parseOfx(OFX_SGML);
     expect(s.rows).toEqual([
       { date: '2026-10-05', amountCents: -650, description: 'SQ *BLUE BOTTLE PALO ALTO CA', externalId: '202610050001' },
-      { date: '2026-10-06', amountCents: 30000, description: 'ZELLE FROM NIKHIL & CO', externalId: '202610060002' },
+      { date: '2026-10-06', amountCents: 30000, description: 'ZELLE FROM JORDAN & CO', externalId: '202610060002' },
     ]);
     expect(s.balance).toEqual({ asOf: '2026-10-18', cents: 41230 });
   });

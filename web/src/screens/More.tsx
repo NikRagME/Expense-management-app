@@ -3,6 +3,7 @@ import { useMe } from '../api/hooks';
 import { Card, PageHeader } from '../components/ui';
 
 const ITEMS = [
+  { to: '/setup', icon: '🧭', label: 'Set up history', hint: 'Opening day, old statements, her spreadsheet' },
   { to: '/more/accounts', icon: '🏦', label: 'Accounts & balances', hint: 'Add accounts, update balances' },
   { to: '/import', icon: '📥', label: 'Import a statement', hint: 'Citi, SFCU, Venmo…' },
   { to: '/more/parent-paid', icon: '🤝', label: 'Paid by parent', hint: 'Rent, phone plan and other costs' },

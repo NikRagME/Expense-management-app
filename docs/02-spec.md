@@ -503,7 +503,7 @@ multiple currencies.
 
 ## 12. History setup: bringing accounts up to date from opening day
 
-> **Status:** Draft for review · added after Phase 1 was built.
+> **Status:** Built · added after Phase 1. §12.8 records what we learned from her real Citi statement and tracking sheet.
 > Changes the earlier "start tracking from this month" decision: Pocket now holds the **full history** of each account.
 
 ### 12.1 Situation
@@ -613,3 +613,22 @@ A guided, four-step checklist. Each step shows its status (✓ done / in progres
 | **H4** | Her categories never overwrite a category already chosen in Pocket. | The spreadsheet always wins. |
 | **H5** | Excel `.xlsx` is read directly; older `.xls` files need to be re-saved as `.xlsx` or CSV. | |
 | **H6** | A sample of her spreadsheet (amounts can be blurred) will tune the column guessing, like the bank statement samples. | |
+
+### 12.8 What her real files showed, and the decisions taken
+
+These come from a real Citi statement (Sep 9 – Oct 1) and a PDF of her Google Sheet. Neither file is stored in the repository; tests use made-up copies with the same layout.
+
+| Finding | Decision |
+|---|---|
+| Citi sends **PDF statements** covering **Checking and Savings together**, with the bank's opening ($0.00) and closing balances | Pocket reads Citi PDFs directly; one PDF fills both accounts and checks both balances. CSV/OFX downloads still work, and a period imported both ways isn't double counted. The SFCU PDF format will be added when a sample arrives. |
+| She has a **Citi Savings** account | It's a fifth account (added like any other). |
+| Her sheet has two tabs: **Budget Tracker** (date, amount, description, category, account) and a **Citi money-in/money-out ledger** (no account column; "PAYMENT IN/OUT" instead of a category) | The importer finds each tab's table, treats "PAYMENT IN/OUT" as the direction, and lets you set the account for a tab that has none. |
+| **OoB** = "out of budget, I (parent) will pay"; **PP** = "Pop pays" | Both map to *Paid by parent*: the purchase stays on her account but counts in her cost of living, not her own spending, and is tagged *outside budget*. A card payment marked PP counts as money from the parent. Pocket still suggests a real category (Rideshare, Phone…). |
+| A **$35,000 deposit** went straight to **Stanford tuition** ($34,805) | Tuition is *Paid by parent* (cost of living, not her spending). The deposit is answered in Review as "From parent, to cover a cost", so it isn't counted as her income. |
+| **Zelle to herself** (her own name, cut short) moves money to her own SFCU account | Settings → *Her full name*; Zelle to/from her own name is a transfer. |
+| **Bank names are cut short** (first name + part of the surname), and a friend shares the parent's first name | Settings asks for the parent's **full name**; a truncated bank name matches it, while a different person with the same first name doesn't. Friends' Zelle payments ask "what is it?", like Venmo. |
+| Her amounts are sometimes **rounded** (Walmart $50.00 vs $50.24; iCloud $1.00 vs $0.99) | A near amount (within $1 or 3%) matches when the descriptions agree; the bank's amount is kept and the difference is shown. |
+| Some rows are **bookkeeping, not transactions** ("Initial Budget $500", entries "technically September") and one expense is on **both tabs** | These go to Review: pick the bank line by hand (searched ±1 month), add it, or skip it. A row repeated on another tab is flagged as a likely duplicate. |
+| Merchant text includes store codes and cities ("D0964 TRADER JOE S #20 … CAUS07154") | Cleaned up to "Trader Joe's"; Citi's own category lines (e.g. "Restaurant/Bar") are used as hints. |
+
+**Updated assumptions:** H1 (statements first) and H3 (±4 days) unchanged; H4 (Pocket choices never overwritten) is enforced. A person's edits are remembered on each transaction for this. H5 also covers Google Sheets: *File → Download → Microsoft Excel (.xlsx)*.

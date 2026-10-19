@@ -67,12 +67,12 @@ async function setupAccounts(api: ReturnType<typeof client>) {
   const sfcu = (await api.post('/api/accounts', { name: 'SFCU Checking', institution: 'SFCU', type: 'checking', startingBalance: { cents: 20000, asOf: '2026-09-30' } })).body.id;
   const card = (await api.post('/api/accounts', { name: 'SFCU Card', institution: 'SFCU', type: 'credit_card', startingBalance: { cents: -10000, asOf: '2026-09-30' } })).body.id;
   const venmo = (await api.post('/api/accounts', { name: 'Venmo', institution: 'Venmo', type: 'payment_app', startingBalance: { cents: 2400, asOf: '2026-09-30' } })).body.id;
-  await api.patch('/api/settings', { parentZelleNames: ['Nikhil'] });
+  await api.patch('/api/settings', { parentZelleNames: ['Jordan'] });
   return { citi, sfcu, card, venmo };
 }
 
 const CITI_CSV = `Status,Date,Description,Debit,Credit
-Cleared,10/01/2026,ZELLE FROM NIKHIL R,,300.00
+Cleared,10/01/2026,ZELLE FROM JORDAN R,,300.00
 Cleared,10/05/2026,SFCU VISA PMT,100.00,
 Cleared,10/13/2026,VENMO PAYMENT 1023,36.00,
 Cleared,10/14/2026,TRADER JOE S #123 PALO ALTO CA,45.10,

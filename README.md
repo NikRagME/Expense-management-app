@@ -22,8 +22,11 @@ trustworthy view, answering three questions in under a minute on her phone:
 - **Google sign-in** for exactly two allow-listed people. Both have full access, and every edit records who made it.
 - **Accounts:** add any number of accounts of any type at any time, archive old ones, and see a balance for each.
 - **Balance check:** compares the bank's own figure with the app's ("Balanced ✓" or "Off by $23.10").
+- **History from opening day:** a guided setup brings every account up to date.
+  - Citi **PDF** statements (checking + savings in one file, with the bank's opening and closing balances).
+  - Her tracking **spreadsheet** (.xlsx or CSV): rows are matched to bank lines and her categories, notes and descriptions copied across; rows with no bank line are added or sent to Review; "OoB"/"PP" become *Paid by parent*; exact undo.
 - **Statement import:**
-  - CSV (column mapping saved per account), OFX/QFX and Venmo CSV
+  - PDF (Citi), CSV (column mapping saved per account), OFX/QFX and Venmo CSV
   - files are parsed in the browser
   - a preview shows exactly what will be imported
   - duplicate detection, and one-tap undo.

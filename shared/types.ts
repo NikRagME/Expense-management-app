@@ -84,7 +84,7 @@ export interface Rule {
 }
 
 export interface Settings {
-  /** Parent's full name as banks show it (e.g. "Nikhil Raghavan"). Bank names are often cut short. */
+  /** Parent's full name as banks show it (e.g. "Jordan Riverton"). Bank names are often cut short. */
   parentZelleNames: string[];
   /** Her own name as banks show it, so Zelle to/from herself counts as a transfer. */
   ownNames: string[];

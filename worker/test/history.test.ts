@@ -33,13 +33,13 @@ async function login() {
 }
 
 const checkingRows: ParsedRow[] = [
-  { date: '2026-09-11', amountCents: 50000, description: 'Zelle from NIKHIL RAGHA', counterparty: 'Nikhil Ragha' },
+  { date: '2026-09-11', amountCents: 50000, description: 'Zelle from JORDAN RIVER', counterparty: 'Jordan River' },
   { date: '2026-09-11', amountCents: 3480500, description: 'Transfer From Money Market' },
   { date: '2026-09-14', amountCents: -5024, description: 'WAL-MART MOUNTAIN VIEWCAUS05154' },
   { date: '2026-09-15', amountCents: -3480500, description: 'ACH Stanford Univ Stanford' },
-  { date: '2026-09-21', amountCents: -600, description: 'Zelle to MCDONAGH KUN', counterparty: 'Mcdonagh Kun' },
-  { date: '2026-09-24', amountCents: -10000, description: 'Zelle to Zanaee Ragha', counterparty: 'Zanaee Ragha' },
-  { date: '2026-09-28', amountCents: 200, description: 'Zelle from Nikhil Tyron', counterparty: 'Nikhil Tyron' },
+  { date: '2026-09-21', amountCents: -600, description: 'Zelle to CASEY KIM', counterparty: 'Casey Kim' },
+  { date: '2026-09-24', amountCents: -10000, description: 'Zelle to Alex River', counterparty: 'Alex River' },
+  { date: '2026-09-28', amountCents: 200, description: 'Zelle from Jordan Tyler', counterparty: 'Jordan Tyler' },
   { date: '2026-09-29', amountCents: -1497, description: 'UBER *TRIP HELP.UBER.C 8005928996 CA 26271' },
   { date: '2026-09-29', amountCents: -2444, description: 'COUPA CAFE 4 STANFORD CA 26271', categoryHint: 'eating_out' },
 ];
@@ -78,7 +78,7 @@ async function setUp() {
   const dad = await login();
   const add = async (name: string, type: string) => (await dad.post('/api/accounts', { name, institution: 'x', type })).body.id as string;
   const ids = { citi: await add('Citi Checking', 'checking'), save: await add('Citi Savings', 'savings'), card: await add('SFCU Card', 'credit_card') };
-  await dad.patch('/api/settings', { parentZelleNames: ['Nikhil Raghavan'], ownNames: ['Zanaee Raghavan'] });
+  await dad.patch('/api/settings', { parentZelleNames: ['Jordan Riverton'], ownNames: ['Alex Riverton'] });
   return { dad, ids };
 }
 
@@ -126,9 +126,9 @@ describe('history setup', () => {
       accountAliases: { 'SFCU Credit': ids.card },
       rows: [
         sheetRow('Citi', 5, '2026-09-14', -5000, 'Walmart', 'Miscellanous', [ids.citi, ids.save]),
-        sheetRow('Citi', 6, '2026-09-21', -600, 'Fake Reeses', 'OoB', [ids.citi, ids.save], 'for Kun'),
+        sheetRow('Citi', 6, '2026-09-21', -600, 'Fake Reeses', 'OoB', [ids.citi, ids.save], 'for Casey'),
         sheetRow('Citi', 7, '2026-09-28', -1497, 'Uber to PA', 'OoB', [ids.citi, ids.save]),
-        sheetRow('Citi', 8, '2026-09-28', -2444, 'Coupa w mannat', 'Food', [ids.citi, ids.save]),
+        sheetRow('Citi', 8, '2026-09-28', -2444, 'Coupa w Sam', 'Food', [ids.citi, ids.save]),
         sheetRow('Citi', 9, '2026-10-01', 50000, 'Initial Budget', 'PAYMENT IN', [ids.citi, ids.save]),
         sheetRow('Budget', 7, '2026-10-04', -3533, 'Depop Polo Sweater', 'Clothes', [ids.card]),
         sheetRow('Budget', 8, '2026-10-05', -1482, 'Coupa Lunch', 'Food', [ids.card]),
@@ -145,7 +145,7 @@ describe('history setup', () => {
     expect(await tx('Walmart')).toMatchObject({ description: 'Walmart', amountCents: -5024, kind: 'spend', lines: [{ categoryId: 'misc' }] });
     const reeses = await tx('Fake Reeses');
     // Out of budget, so paid by parent; Pocket still asks what it was for (no shop to guess from).
-    expect(reeses).toMatchObject({ kind: 'parent_paid', note: 'for Kun', needsAttention: 'uncategorized', lines: [{ budgetScope: 'outside' }] });
+    expect(reeses).toMatchObject({ kind: 'parent_paid', note: 'for Casey', needsAttention: 'uncategorized', lines: [{ budgetScope: 'outside' }] });
     expect(await tx('Uber to PA')).toMatchObject({ kind: 'parent_paid', needsAttention: null, lines: [{ categoryId: 'rideshare', budgetScope: 'outside' }] });
     expect(await tx('Coupa')).toMatchObject({ lines: [{ categoryId: 'coffee_snacks' }] }); // Pocket choice kept
     expect(await tx('Depop')).toMatchObject({ accountId: ids.card, amountCents: -3533, fromSpreadsheet: true, lines: [{ categoryId: 'clothing' }] });

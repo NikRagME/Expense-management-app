@@ -122,7 +122,7 @@ describe('matching rows to bank lines', () => {
   const allCovered = () => true;
 
   it('matches exact amounts within the date window, even with different descriptions', () => {
-    const r = matchRows([row(0, '2026-09-21', -600, 'Fake Reeses')], [tx('z', 'citi', '2026-09-21', -600, 'Zelle to MCDONAGH KUN')], allCovered);
+    const r = matchRows([row(0, '2026-09-21', -600, 'Fake Reeses')], [tx('z', 'citi', '2026-09-21', -600, 'Zelle to CASEY KIM')], allCovered);
     expect(r[0]).toEqual({ index: 0, status: 'matched', transactionId: 'z', amountDiffers: false });
   });
 
@@ -147,7 +147,7 @@ describe('matching rows to bank lines', () => {
   });
 
   it('refuses to guess between equally good candidates', () => {
-    const r = matchRows([row(0, '2026-09-28', -10000, 'To SFCU')], [tx('a', 'citi', '2026-09-26', -10000, 'Zelle to Zanaee'), tx('b', 'citi', '2026-09-30', -10000, 'Zelle to Zanaee')], allCovered);
+    const r = matchRows([row(0, '2026-09-28', -10000, 'To SFCU')], [tx('a', 'citi', '2026-09-26', -10000, 'Zelle to Alex'), tx('b', 'citi', '2026-09-30', -10000, 'Zelle to Alex')], allCovered);
     expect(r[0]).toMatchObject({ status: 'unmatched', reason: 'ambiguous' });
   });
 
@@ -169,7 +169,7 @@ describe('matching rows to bank lines', () => {
   });
 
   it('scores description similarity', () => {
-    expect(similarity('Coupa w mannat', 'Coupa Cafe')).toBeGreaterThan(0);
-    expect(similarity('Fake Reeses', 'Zelle to MCDONAGH KUN')).toBe(0);
+    expect(similarity('Coupa w Sam', 'Coupa Cafe')).toBeGreaterThan(0);
+    expect(similarity('Fake Reeses', 'Zelle to CASEY KIM')).toBe(0);
   });
 });

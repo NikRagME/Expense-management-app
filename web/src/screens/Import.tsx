@@ -4,16 +4,23 @@ import { detectFormat, guessMapping, parseCsv, parseCsvText, parseOfx, parseVenm
 import type { CsvMapping, ParsedStatement } from '../../../shared/types';
 import { api, type Account, type ImportBody, type ImportPreview } from '../api/client';
 import { useAccounts, useApiMutation, useCategoryLookup } from '../api/hooks';
+import { looksLikeCitiPdf, parseCitiPdf } from '../../../shared/parsers/citiPdf';
+import { PdfImport } from '../components/PdfImport';
+import { isPdf, readPdf } from '../lib/pdf';
 import { Button, Card, ErrorText, Field, PageHeader, SectionTitle, Select, Status } from '../components/ui';
 import { KIND_LABELS, money, prettyDate } from '../lib/format';
 
-async function sha256(text: string) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+async function sha256(data: string | Uint8Array) {
+  const buf = await crypto.subtle.digest('SHA-256', typeof data === 'string' ? new TextEncoder().encode(data) : (data as unknown as ArrayBuffer));
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 const HOW_TO: Record<string, string[]> = {
-  citi: ['Sign in at citi.com on a computer', 'Open the account → "Download transactions"', 'Pick the date range and choose CSV (or Quicken/QFX)'],
+  citi: [
+    'Sign in at citi.com',
+    'Open "Statements" and download the monthly PDF (one PDF covers checking and savings), or',
+    'open the account → "Download transactions" and choose CSV or QFX',
+  ],
   sfcu: ['Sign in to SFCU online banking', 'Open the account → "Export" / "Download"', 'Choose QFX/OFX if offered (best), otherwise CSV'],
   venmo: ['Go to venmo.com on a computer and sign in', 'Open "Statements"', 'Pick the month and click "Download CSV"'],
 };
@@ -37,6 +44,8 @@ export function Import() {
   const [editMapping, setEditMapping] = useState(false);
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [done, setDone] = useState<ImportPreview | null>(null);
+  const [pdf, setPdf] = useState<{ name: string; hash: string; statements: ParsedStatement[] } | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   const format = file ? detectFormat(file.text) : null;
   const effectiveMapping = mapping ?? account?.importMapping ?? (file && format === 'csv' ? guessMapping(parseCsvText(file.text)) : null);
@@ -103,16 +112,34 @@ export function Import() {
           </ol>
         </details>
         <label className="block">
-          <span className="mb-1 block text-sm font-semibold text-ink-2">Statement file (CSV, OFX, QFX)</span>
+          <span className="mb-1 block text-sm font-semibold text-ink-2">Statement file (PDF, CSV, OFX, QFX)</span>
           <input
             type="file"
-            accept=".csv,.ofx,.qfx,.txt,text/csv"
+            accept=".pdf,.csv,.ofx,.qfx,.txt,text/csv,application/pdf"
             className="block w-full text-sm file:mr-3 file:min-h-11 file:rounded-2xl file:border-0 file:bg-brand file:px-4 file:font-semibold file:text-brand-ink"
             onChange={async (e) => {
               const f = e.target.files?.[0];
               setPreview(null);
               setMapping(null);
-              setFile(f ? { name: f.name, text: await f.text() } : null);
+              setPdf(null);
+              setFile(null);
+              setFileError(null);
+              if (!f) return;
+              const bytes = new Uint8Array(await f.arrayBuffer());
+              if (isPdf(bytes)) {
+                try {
+                  const pages = await readPdf(bytes.slice());
+                  if (!looksLikeCitiPdf(pages)) {
+                    setFileError("Pocket can read Citi PDF statements so far. For this bank, download a CSV or QFX file instead (SFCU's PDF format will be added once we have a sample).");
+                    return;
+                  }
+                  setPdf({ name: f.name, hash: await sha256(bytes), statements: parseCitiPdf(pages) });
+                } catch {
+                  setFileError("That PDF couldn't be read. Try downloading it again, or use a CSV/QFX download.");
+                }
+                return;
+              }
+              setFile({ name: f.name, text: new TextDecoder().decode(bytes) });
             }}
           />
         </label>
@@ -131,7 +158,11 @@ export function Import() {
             )}
           </p>
         )}
+        {fileError && <p className="rounded-xl bg-warn-soft px-3 py-2 text-sm text-warn">{fileError}</p>}
+        {pdf && <p className="text-sm text-ink-2">Detected <b>Citi PDF statement</b> · {pdf.statements.length} account section{pdf.statements.length === 1 ? '' : 's'}</p>}
       </Card>
+
+      {pdf && <PdfImport key={pdf.hash} fileName={pdf.name} fileHash={pdf.hash} statements={pdf.statements} accounts={usable} onDone={() => setPdf(null)} />}
 
       {file && needsMapping && effectiveMapping && (
         <MappingEditor

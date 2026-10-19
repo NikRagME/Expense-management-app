@@ -25,9 +25,9 @@ const norm = (s: string) => s.toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\
 
 /**
  * Does a bank name refer to one of these people? Banks often cut names short
- * ("NIKHIL RAGHA" for Nikhil Raghavan), so a long-enough start of the full
- * name counts, while a different person sharing a first name ("Nikhil Tyron")
- * doesn't. A configured first name alone matches loosely (any "Nikhil …").
+ * ("JORDAN RIVER" for Jordan Riverton), so a long-enough start of the full
+ * name counts, while a different person sharing a first name ("Jordan Tyler")
+ * doesn't. A configured first name alone matches loosely (any "Jordan …").
  */
 export function nameMatches(bankName: string | undefined, text: string, names: string[]): boolean {
   const candidates = bankName ? [norm(bankName)] : spansAfterKeywords(norm(text));
@@ -43,7 +43,7 @@ export function nameMatches(bankName: string | undefined, text: string, names: s
   });
 }
 
-/** For descriptions without a parsed name ("ZELLE FROM NIKHIL R"), the words after from/to. */
+/** For descriptions without a parsed name ("ZELLE FROM JORDAN R"), the words after from/to. */
 function spansAfterKeywords(t: string): string[] {
   const m = /\b(?:from|to|name)\s+(.+)$/.exec(t);
   return m ? [m[1].trim()] : [t];

@@ -17,7 +17,7 @@ const pages: PdfPage[] = [
     [665, [50, '42049551234'], [377, 'Beginning Balance:'], [538, '$0.00']],
     [655, [377, 'Ending Balance:'], [532, '$420.00']],
     HEADER,
-    [625, [50, '12/11'], [79, 'Zelle Credit'], [128, 'PAY ID:X ORG ID:CTI NAME:NIKHIL RAGHA'], [454, '500.00']],
+    [625, [50, '12/11'], [79, 'Zelle Credit'], [128, 'PAY ID:X ORG ID:CTI NAME:JORDAN RIVER'], [454, '500.00']],
     [615, [50, '12/14'], [79, 'Debit PIN Purchase'], [162, 'WAL-MART #2280'], [238, 'MOUNTAIN VIEWCAUS05154'], [376, '50.24'], [521, '449.76']],
     [599, [50, '12/30'], [79, 'Debit Card Purchase 12/27 06:28p #4065'], [376, '24.44']],
     [592, [79, 'COUPA CAFE 4'], [152, 'STANFORD'], [202, 'CA 26271']],
@@ -60,7 +60,7 @@ describe('Citi PDF statements', () => {
   it('cleans up each kind of entry', () => {
     const [checking, savings] = parseCitiPdf(pages);
     expect(checking.rows).toEqual([
-      { date: '2026-12-11', amountCents: 50000, description: 'Zelle from NIKHIL RAGHA', counterparty: 'Nikhil Ragha' },
+      { date: '2026-12-11', amountCents: 50000, description: 'Zelle from JORDAN RIVER', counterparty: 'Jordan River' },
       { date: '2026-12-14', amountCents: -5024, description: 'WAL-MART MOUNTAIN VIEWCAUS05154' },
       { date: '2026-12-30', amountCents: -2444, description: 'COUPA CAFE 4 STANFORD CA 26271', categoryHint: 'eating_out' },
       { date: '2027-01-02', amountCents: 2214, description: 'Return: D0964 THREDUP 6175759676 CA 26271' },

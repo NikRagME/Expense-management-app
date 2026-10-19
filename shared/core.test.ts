@@ -74,12 +74,12 @@ describe('merchant cleaning', () => {
 });
 
 describe('classification', () => {
-  const settings: Settings = { parentZelleNames: ['Nikhil'], ownNames: [], venmoIncomingDefault: 'ask' };
+  const settings: Settings = { parentZelleNames: ['Jordan'], ownNames: [], venmoIncomingDefault: 'ask' };
   const run = (row: Partial<ParsedRow>, accountType: AccountType, rules: Rule[] = [], s = settings) =>
     classify({ date: '2026-10-12', amountCents: -1000, description: '', ...row }, { accountId: 'a1', accountType, rules, settings: s });
 
   it('recognises the Zelle allowance as income', () => {
-    expect(run({ amountCents: 30000, description: 'ZELLE FROM NIKHIL R' }, 'checking')).toMatchObject({ kind: 'income', categoryId: 'allowance' });
+    expect(run({ amountCents: 30000, description: 'ZELLE FROM JORDAN R' }, 'checking')).toMatchObject({ kind: 'income', categoryId: 'allowance' });
   });
 
   it('treats card payments and bank transfers as transfers', () => {
@@ -110,18 +110,18 @@ describe('classification', () => {
     const row = { amountCents: 1800, description: 'Maya — pizza', counterparty: 'Maya', paymentNote: 'pizza 🍕' };
     expect(run(row, 'payment_app')).toMatchObject({ kind: 'repayment', needsAttention: 'venmo_incoming' });
     expect(run(row, 'payment_app', [], { ...settings, venmoIncomingDefault: 'repayment' })).toMatchObject({ kind: 'repayment', needsAttention: null, categoryId: 'eating_out' });
-    expect(run({ ...row, counterparty: 'Nikhil R' }, 'payment_app')).toMatchObject({ kind: 'income' });
+    expect(run({ ...row, counterparty: 'Jordan R' }, 'payment_app')).toMatchObject({ kind: 'income' });
   });
 
   it('uses full names so a friend sharing a first name is not mistaken for the parent', () => {
-    const real: Settings = { parentZelleNames: ['Nikhil Raghavan'], ownNames: ['Zanaee Raghavan'], venmoIncomingDefault: 'ask' };
+    const real: Settings = { parentZelleNames: ['Jordan Riverton'], ownNames: ['Alex Riverton'], venmoIncomingDefault: 'ask' };
     const citi = (description: string, counterparty: string, amountCents: number) => run({ description, counterparty, amountCents }, 'checking', [], real);
-    expect(citi('Zelle from NIKHIL RAGHA', 'Nikhil Ragha', 50000)).toMatchObject({ kind: 'income', categoryId: 'allowance' });
-    expect(citi('Zelle from Nikhil Tyron', 'Nikhil Tyron', 200)).toMatchObject({ kind: 'repayment', needsAttention: 'venmo_incoming' });
-    expect(citi('Zelle to Zanaee Ragha', 'Zanaee Ragha', -10000)).toMatchObject({ kind: 'transfer' });
-    expect(citi('Zelle to MCDONAGH KUN', 'Mcdonagh Kun', -600)).toMatchObject({ kind: 'spend', needsAttention: 'uncategorized' });
-    expect(nameMatches(undefined, 'ZELLE FROM NIKHIL R', ['Nikhil'])).toBe(true);
-    expect(nameMatches(undefined, 'ZELLE FROM NIKHIL TYRON', ['Nikhil Raghavan'])).toBe(false);
+    expect(citi('Zelle from JORDAN RIVER', 'Jordan River', 50000)).toMatchObject({ kind: 'income', categoryId: 'allowance' });
+    expect(citi('Zelle from Jordan Tyler', 'Jordan Tyler', 200)).toMatchObject({ kind: 'repayment', needsAttention: 'venmo_incoming' });
+    expect(citi('Zelle to Alex River', 'Alex River', -10000)).toMatchObject({ kind: 'transfer' });
+    expect(citi('Zelle to CASEY KIM', 'Casey Kim', -600)).toMatchObject({ kind: 'spend', needsAttention: 'uncategorized' });
+    expect(nameMatches(undefined, 'ZELLE FROM JORDAN R', ['Jordan'])).toBe(true);
+    expect(nameMatches(undefined, 'ZELLE FROM JORDAN TYLER', ['Jordan Riverton'])).toBe(false);
   });
 
   it('treats tuition as paid by parent and uses statement category hints', () => {

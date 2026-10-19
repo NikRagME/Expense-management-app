@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { GroupTotal, Overview } from '../api/client';
-import { useAccounts, useCategoryLookup, useOverview } from '../api/hooks';
+import { useAccounts, useCategoryLookup, useOverview, useSetup } from '../api/hooks';
 import { PeriodSwitcher, usePeriod } from '../components/PeriodSwitcher';
 import { Card, Empty, ErrorText, Loading, SectionTitle, Status } from '../components/ui';
 import { ACCOUNT_EMOJI, balanceText, money, prettyDate, timeAgo } from '../lib/format';
@@ -62,6 +62,7 @@ export function Home() {
         </div>
       </Card>
 
+      <SetupNudge />
       <ReviewNudge count={o.needsAttentionCount} />
 
       <Card>
@@ -84,6 +85,23 @@ export function Home() {
 
       <Accounts o={o} />
     </div>
+  );
+}
+
+/** Offered until her history is brought up to date (spec §12.5). */
+function SetupNudge() {
+  const s = useSetup().data;
+  if (!s || (s.steps.opening && s.steps.spreadsheet)) return null;
+  const done = Object.values(s.steps).filter(Boolean).length;
+  return (
+    <Link to="/setup" className="flex items-center justify-between rounded-3xl bg-surface px-4 py-3 font-semibold ring-1 ring-line">
+      <span>
+        🧭 Set up her history <span className="font-normal text-muted">· {done} of 4 steps done</span>
+      </span>
+      <span aria-hidden className="text-brand">
+        ›
+      </span>
+    </Link>
   );
 }
 
