@@ -40,4 +40,5 @@ export const parsedRow = z.object({
   paymentNote: z.string().max(500).optional(),
   fundingSource: z.string().max(200).optional(),
   kindHint: kind.optional(),
+  categoryHint: z.string().max(40).optional(),
 });

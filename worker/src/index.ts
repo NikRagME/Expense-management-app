@@ -6,12 +6,14 @@ import { runNightly } from './jobs/nightly';
 import { accounts } from './routes/accounts';
 import { categories } from './routes/categories';
 import { exportsRoute } from './routes/exports';
+import { history } from './routes/history';
 import { imports } from './routes/imports';
 import { recurring } from './routes/recurring';
 import { reports } from './routes/reports';
 import { review } from './routes/review';
 import { rules } from './routes/rules';
 import { settings } from './routes/settings';
+import { setup } from './routes/setup';
 import { transactions } from './routes/transactions';
 
 export const app = new Hono<AppEnv>();
@@ -38,6 +40,8 @@ api.route('/recurring', recurring);
 api.route('/reports', reports);
 api.route('/settings', settings);
 api.route('/export', exportsRoute);
+api.route('/history', history);
+api.route('/setup', setup);
 app.route('/api', api);
 
 app.notFound((c) => (c.req.path.startsWith('/api/') ? c.json({ error: 'Not found' }, 404) : c.text('Not found', 404)));

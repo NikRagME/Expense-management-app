@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { balanceAt, checkBalance } from './balance';
-import { classify } from './classify';
+import { classify, nameMatches } from './classify';
 import { addDays, parseDate } from './dates';
 import { findMergeCandidate, findTransferPairs, splitDuplicates, type MatchTx } from './matching';
 import { cleanMerchant } from './merchant';
@@ -58,8 +58,12 @@ describe('dates and periods', () => {
 
 describe('merchant cleaning', () => {
   it.each([
-    ['SQ *BLUE BOTTLE 0423 PALO ALTO CA', 'Blue Bottle Palo Alto'],
-    ['TST* SUSHI KAZU 12345 STANFORD CA', 'Sushi Kazu Stanford'],
+    ['SQ *BLUE BOTTLE 0423 PALO ALTO CA', 'Blue Bottle'],
+    ['TST* SUSHI KAZU 12345 STANFORD CA', 'Sushi Kazu'],
+    ['D0964 TRADER JOE S #20 855 ELPALO ALTO CAUS07154', "Trader Joe's"],
+    ['POSTAL ANNEX STANFORD REDWOOD CITY CA 26263', 'Postal Annex'],
+    ['WAL-MART MOUNTAIN VIEWCAUS05154', 'Walmart'],
+    ['Return: D0964 THREDUP 6175759676 CA 26271', 'ThredUp'],
     ['AMZN Mktp US*2K4L19', 'Amazon'],
     ['UBER *EATS PENDING', 'Uber Eats'],
     ['PURCHASE AUTHORIZED ON 10/12 CHIPOTLE 1234 PALO ALTO CA', 'Chipotle'],
@@ -70,7 +74,7 @@ describe('merchant cleaning', () => {
 });
 
 describe('classification', () => {
-  const settings: Settings = { parentZelleNames: ['Nikhil'], venmoIncomingDefault: 'ask' };
+  const settings: Settings = { parentZelleNames: ['Nikhil'], ownNames: [], venmoIncomingDefault: 'ask' };
   const run = (row: Partial<ParsedRow>, accountType: AccountType, rules: Rule[] = [], s = settings) =>
     classify({ date: '2026-10-12', amountCents: -1000, description: '', ...row }, { accountId: 'a1', accountType, rules, settings: s });
 
@@ -107,6 +111,26 @@ describe('classification', () => {
     expect(run(row, 'payment_app')).toMatchObject({ kind: 'repayment', needsAttention: 'venmo_incoming' });
     expect(run(row, 'payment_app', [], { ...settings, venmoIncomingDefault: 'repayment' })).toMatchObject({ kind: 'repayment', needsAttention: null, categoryId: 'eating_out' });
     expect(run({ ...row, counterparty: 'Nikhil R' }, 'payment_app')).toMatchObject({ kind: 'income' });
+  });
+
+  it('uses full names so a friend sharing a first name is not mistaken for the parent', () => {
+    const real: Settings = { parentZelleNames: ['Nikhil Raghavan'], ownNames: ['Zanaee Raghavan'], venmoIncomingDefault: 'ask' };
+    const citi = (description: string, counterparty: string, amountCents: number) => run({ description, counterparty, amountCents }, 'checking', [], real);
+    expect(citi('Zelle from NIKHIL RAGHA', 'Nikhil Ragha', 50000)).toMatchObject({ kind: 'income', categoryId: 'allowance' });
+    expect(citi('Zelle from Nikhil Tyron', 'Nikhil Tyron', 200)).toMatchObject({ kind: 'repayment', needsAttention: 'venmo_incoming' });
+    expect(citi('Zelle to Zanaee Ragha', 'Zanaee Ragha', -10000)).toMatchObject({ kind: 'transfer' });
+    expect(citi('Zelle to MCDONAGH KUN', 'Mcdonagh Kun', -600)).toMatchObject({ kind: 'spend', needsAttention: 'uncategorized' });
+    expect(nameMatches(undefined, 'ZELLE FROM NIKHIL R', ['Nikhil'])).toBe(true);
+    expect(nameMatches(undefined, 'ZELLE FROM NIKHIL TYRON', ['Nikhil Raghavan'])).toBe(false);
+  });
+
+  it('treats tuition as paid by parent and uses statement category hints', () => {
+    expect(run({ description: 'ACH Stanford Univ Stanford', amountCents: -3480500 }, 'checking')).toMatchObject({ kind: 'parent_paid', categoryId: 'tuition' });
+    expect(run({ description: 'D0964 STANFORD UNIV BKST #67 STANFORD', amountCents: -249 }, 'checking')).toMatchObject({ kind: 'spend', categoryId: 'books' });
+    expect(run({ description: 'XYZ PLACE 4', categoryHint: 'eating_out' }, 'checking')).toMatchObject({ categoryId: 'eating_out' });
+    expect(run({ description: 'Return: D0964 THREDUP 6175759676 CA 26271', amountCents: 2214 }, 'checking')).toMatchObject({ kind: 'refund' });
+    expect(run({ description: 'Transfer From Money Market', amountCents: 5000 }, 'checking').kind).toBe('transfer');
+    expect(run({ description: 'Deposit Teller', amountCents: 3500000 }, 'savings')).toMatchObject({ needsAttention: 'unknown_inflow' });
   });
 
   it('asks about unexplained bank inflows', () => {

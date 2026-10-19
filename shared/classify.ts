@@ -21,9 +21,32 @@ const CARD_PAYMENT_FROM_BANK_RE = /\b(card ?(payment|pmt|pymt)|crcardpmt|loan pm
 const VENMO_RE = /\bvenmo\b/i;
 const ZELLE_RE = /\bzelle\b/i;
 
-function matchesParent(text: string, names: string[]): boolean {
-  const t = text.toLowerCase();
-  return names.some((n) => n.trim() && t.includes(n.trim().toLowerCase()));
+const norm = (s: string) => s.toLowerCase().replace(/[^a-z ]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * Does a bank name refer to one of these people? Banks often cut names short
+ * ("NIKHIL RAGHA" for Nikhil Raghavan), so a long-enough start of the full
+ * name counts, while a different person sharing a first name ("Nikhil Tyron")
+ * doesn't. A configured first name alone matches loosely (any "Nikhil …").
+ */
+export function nameMatches(bankName: string | undefined, text: string, names: string[]): boolean {
+  const candidates = bankName ? [norm(bankName)] : spansAfterKeywords(norm(text));
+  return names.some((raw) => {
+    const full = norm(raw);
+    if (!full) return false;
+    const fullName = full.includes(' ');
+    return candidates.some((who) => {
+      if (!who) return false;
+      if (!fullName) return who === full || who.startsWith(`${full} `);
+      return who.startsWith(full) || (who.length >= 8 && who.includes(' ') && full.startsWith(who));
+    });
+  });
+}
+
+/** For descriptions without a parsed name ("ZELLE FROM NIKHIL R"), the words after from/to. */
+function spansAfterKeywords(t: string): string[] {
+  const m = /\b(?:from|to|name)\s+(.+)$/.exec(t);
+  return m ? [m[1].trim()] : [t];
 }
 
 export function ruleMatches(rule: Rule, merchant: string, description: string, accountId: string): boolean {
@@ -73,9 +96,13 @@ export function classify(
   const inflow = row.amountCents > 0;
 
   // 3. System detection.
+  const isParent = nameMatches(row.counterparty, description, ctx.settings.parentZelleNames);
+  const isSelf = nameMatches(row.counterparty, description, ctx.settings.ownNames ?? []);
+
   if (ctx.accountType === 'payment_app') {
+    if (isSelf) return out('transfer', 'system');
     if (inflow) {
-      if (matchesParent(`${row.counterparty ?? ''} ${description}`, ctx.settings.parentZelleNames)) return out('income', 'system', 'allowance');
+      if (isParent) return out('income', 'system', 'allowance');
       if (ctx.settings.venmoIncomingDefault === 'repayment') return withCategory(out('repayment', 'system'), row, ctx, rule);
       return out('repayment', 'system', null, 'venmo_incoming');
     }
@@ -89,8 +116,14 @@ export function classify(
   }
 
   // Bank-like accounts (checking, savings, cash, other).
-  if (inflow && ZELLE_RE.test(description) && matchesParent(description, ctx.settings.parentZelleNames)) {
-    return out('income', 'system', 'allowance');
+  if (ZELLE_RE.test(description)) {
+    if (isSelf) return out('transfer', 'system'); // e.g. Citi → her own SFCU account
+    if (inflow && isParent) return out('income', 'system', 'allowance');
+    // A friend paying her: ask, like Venmo (spec A5).
+    if (inflow) {
+      if (ctx.settings.venmoIncomingDefault === 'repayment') return withCategory(out('repayment', 'system'), row, ctx, rule);
+      return out('repayment', 'system', null, 'venmo_incoming');
+    }
   }
   if (VENMO_RE.test(description)) return out('transfer', 'system');
   if (TRANSFER_RE.test(description)) return out('transfer', 'system');
@@ -114,7 +147,12 @@ function withCategory(
   const r = rule ?? [...ctx.rules].sort((a, b) => b.priority - a.priority).find((x) => ruleMatches(x, c.merchant, row.description, ctx.accountId));
   if (r?.setCategoryId) return { ...c, categoryId: r.setCategoryId, via: 'rule' };
   const text = `${row.description} ${c.merchant} ${row.paymentNote ?? ''}`;
-  const hint = CATEGORY_HINTS.find(([re]) => re.test(text));
-  if (hint) return { ...c, categoryId: hint[1], via: c.via === 'system' || c.via === 'default' ? 'hint' : c.via };
+  const hint = CATEGORY_HINTS.find(([re]) => re.test(text))?.[1] ?? row.categoryHint;
+  if (hint) {
+    const via = c.via === 'system' || c.via === 'default' ? 'hint' : c.via;
+    // Tuition is paid with money from her parent (decided with the family): cost of living, not her spending.
+    if (hint === 'tuition' && c.kind === 'spend') return { ...c, kind: 'parent_paid', categoryId: hint, via };
+    return { ...c, categoryId: hint, via };
+  }
   return { ...c, categoryId: null, needsAttention: c.needsAttention ?? 'uncategorized' };
 }

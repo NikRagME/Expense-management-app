@@ -28,6 +28,8 @@ export interface TxRow {
   created_at: string;
   updated_at: string;
   transfer_linked: number;
+  user_edited: number;
+  history_import_id: string | null;
 }
 
 export interface LineRow {
@@ -37,13 +39,14 @@ export interface LineRow {
   category_id: string | null;
   note: string;
   sort_order: number;
+  budget_scope: 'in' | 'outside' | 'unsure' | null;
 }
 
 export const TX_SELECT = `
   SELECT t.id, t.account_id, a.name AS account_name, a.type AS account_type, t.import_id, t.source, t.posted_date,
          t.amount_cents, t.raw_description, t.description, t.note, t.kind, t.counterparty, t.payment_note,
          t.funding_source, t.excluded, t.needs_attention, t.dismissed_attention, t.merchant_id, m.name AS merchant_name,
-         cu.name AS created_by_name, uu.name AS updated_by_name, t.created_at, t.updated_at,
+         cu.name AS created_by_name, uu.name AS updated_by_name, t.created_at, t.updated_at, t.user_edited, t.history_import_id,
          EXISTS (SELECT 1 FROM transaction_links l WHERE l.type = 'transfer' AND (l.from_id = t.id OR l.to_id = t.id)) AS transfer_linked
   FROM transactions t
   JOIN accounts a ON a.id = t.account_id
@@ -72,6 +75,8 @@ export function serializeTx(t: TxRow, lines: LineRow[]) {
     excluded: !!t.excluded,
     needsAttention: t.needs_attention,
     transferLinked: !!t.transfer_linked,
+    userEdited: !!t.user_edited,
+    fromSpreadsheet: !!t.history_import_id,
     createdByName: t.created_by_name,
     updatedByName: t.updated_by_name,
     createdAt: t.created_at,
@@ -79,7 +84,7 @@ export function serializeTx(t: TxRow, lines: LineRow[]) {
     lines: lines
       .filter((l) => l.transaction_id === t.id)
       .sort((a, b) => a.sort_order - b.sort_order)
-      .map((l) => ({ id: l.id, amountCents: l.amount_cents, categoryId: l.category_id, note: l.note })),
+      .map((l) => ({ id: l.id, amountCents: l.amount_cents, categoryId: l.category_id, note: l.note, budgetScope: l.budget_scope })),
   };
 }
 

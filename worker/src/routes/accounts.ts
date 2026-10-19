@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { checkBalance } from '../../../shared/balance';
-import { todayIso } from '../../../shared/dates';
+import { addDays, todayIso } from '../../../shared/dates';
 import type { AppEnv } from '../env';
 import { auditStmt } from '../lib/audit';
 import { all, first, parseJson, stmt, uuid } from '../lib/db';
@@ -17,6 +17,7 @@ interface AccountRow {
   import_mapping: string | null;
   sort_order: number;
   archived_at: string | null;
+  opened_on: string | null;
 }
 
 export const accounts = new Hono<AppEnv>();
@@ -39,6 +40,7 @@ accounts.get('/', async (c) => {
       type: a.type,
       importMapping: parseJson(a.import_mapping, null),
       archived: !!a.archived_at,
+      openedOn: a.opened_on,
       lastImportAt: a.last_import_at,
       transactionsThrough: a.through,
       transactionCount: a.tx_count,
@@ -108,6 +110,36 @@ accounts.patch('/:id', async (c) => {
       id,
     ),
     auditStmt(c.env.DB, user.id, 'account', id, 'update', before, body),
+  ]);
+  return c.json({ ok: true });
+});
+
+/**
+ * Opening day (spec §12.3 step 1): the day the account was opened and its balance then
+ * (usually $0). Stored as a known balance at the end of the previous day.
+ */
+accounts.put('/:id/opening', async (c) => {
+  const id = c.req.param('id');
+  const body = parseBody(z.object({ openedOn: isoDate, cents: cents.default(0) }), await c.req.json());
+  const account = await first<AccountRow>(c.env.DB, 'SELECT * FROM accounts WHERE id = ?', id);
+  if (!account) throw new HttpError(404, 'Account not found');
+  if (account.type === 'parent_paid') throw new HttpError(400, 'Paid by parent has no opening balance');
+  const user = c.get('user');
+  const asOf = addDays(body.openedOn, -1);
+  await c.env.DB.batch([
+    stmt(c.env.DB, 'UPDATE accounts SET opened_on = ? WHERE id = ?', body.openedOn, id),
+    // Replace an opening balance typed earlier; statement balances are kept.
+    stmt(c.env.DB, "DELETE FROM balance_snapshots WHERE account_id = ? AND source = 'manual' AND as_of_date = ?", id, account.opened_on ? addDays(account.opened_on, -1) : asOf),
+    stmt(
+      c.env.DB,
+      `INSERT INTO balance_snapshots (id, account_id, as_of_date, balance_cents, source, created_by) VALUES (?, ?, ?, ?, 'manual', ?)`,
+      uuid(),
+      id,
+      asOf,
+      body.cents,
+      user.id,
+    ),
+    auditStmt(c.env.DB, user.id, 'account', id, 'opening', { openedOn: account.opened_on }, body),
   ]);
   return c.json({ ok: true });
 });

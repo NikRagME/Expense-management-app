@@ -40,13 +40,19 @@ export interface ParsedRow {
   fundingSource?: string;
   /** Hint from the parser, e.g. Venmo transfers and funding legs. */
   kindHint?: Kind;
+  /** Category suggested by the statement itself (e.g. Citi's "Restaurant/Bar" line). */
+  categoryHint?: string;
 }
 
 export interface ParsedStatement {
-  format: 'csv' | 'ofx' | 'venmo';
+  format: 'csv' | 'ofx' | 'venmo' | 'pdf';
   rows: ParsedRow[];
+  /** Balance at the end of the day before the statement period (e.g. $0 for a new account). */
+  openingBalance?: { asOf: string; cents: number };
   /** End-of-day balance reported by the statement, if any. */
   balance?: { asOf: string; cents: number };
+  /** For statements covering several accounts (Citi checking + savings in one PDF). */
+  section?: { kind: 'checking' | 'savings'; label: string; last4: string | null };
   errors: string[];
 }
 
@@ -78,6 +84,9 @@ export interface Rule {
 }
 
 export interface Settings {
+  /** Parent's full name as banks show it (e.g. "Nikhil Raghavan"). Bank names are often cut short. */
   parentZelleNames: string[];
+  /** Her own name as banks show it, so Zelle to/from herself counts as a transfer. */
+  ownNames: string[];
   venmoIncomingDefault: 'ask' | 'repayment';
 }

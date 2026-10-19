@@ -12,8 +12,9 @@ const inputSchema = z.object({
   accountId: z.string().min(1),
   fileName: z.string().max(200),
   fileHash: z.string().min(8).max(128),
-  format: z.enum(['csv', 'ofx', 'venmo']),
+  format: z.enum(['csv', 'ofx', 'venmo', 'pdf']),
   rows: z.array(parsedRow).max(5000),
+  openingBalance: z.object({ asOf: isoDate, cents }).nullable().optional(),
   balance: z.object({ asOf: isoDate, cents }).nullable().optional(),
   mapping: csvMapping.nullable().optional(),
 });
@@ -23,6 +24,7 @@ function previewOf(plan: ImportPlan) {
     summary: plan.summary,
     alreadyImported: plan.alreadyImported,
     balance: plan.snapshot,
+    openingBalance: plan.openingSnapshot,
     rows: plan.newTxs.map((t) => ({
       date: t.date,
       amountCents: t.amountCents,

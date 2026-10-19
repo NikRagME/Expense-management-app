@@ -36,6 +36,10 @@ export interface NewTx {
   fundingSource: string | null;
   needsAttention: AttentionReason | null;
   recurringItemId?: string | null;
+  /** Added from her spreadsheet (no bank line); undoes with that import. */
+  historyImportId?: string | null;
+  budgetScope?: 'in' | 'outside' | 'unsure' | null;
+  dismissedAttention?: string | null;
 }
 
 export interface PlannedLink {
@@ -55,10 +59,19 @@ export interface ImportInput {
   accountId: string;
   fileName: string;
   fileHash: string;
-  format: 'csv' | 'ofx' | 'venmo';
+  format: 'csv' | 'ofx' | 'venmo' | 'pdf';
   rows: ParsedRow[];
+  /** Balance at the end of the day before the statement period (from the statement itself). */
+  openingBalance?: { asOf: string; cents: number } | null;
   balance?: { asOf: string; cents: number } | null;
   mapping?: CsvMapping | null;
+}
+
+export interface SnapshotPlan {
+  asOf: string;
+  cents: number;
+  computedCents: number | null;
+  differenceCents: number | null;
 }
 
 export interface ImportPlan {
@@ -69,7 +82,10 @@ export interface ImportPlan {
   duplicates: ParsedRow[];
   links: PlannedLink[];
   updates: TxUpdate[];
-  snapshot: { asOf: string; cents: number; computedCents: number | null; differenceCents: number | null } | null;
+  snapshot: SnapshotPlan | null;
+  openingSnapshot: SnapshotPlan | null;
+  /** Set the account's opening day from the statement when it isn't known yet. */
+  setOpenedOn: string | null;
   alreadyImported: boolean;
   summary: {
     total: number;
@@ -137,7 +153,11 @@ export function planTransferLinks(candidates: MatchTx[]): { links: PlannedLink[]
 }
 
 export async function planImport(db: D1Database, input: ImportInput, ctx?: { rules?: Rule[]; settings?: Settings }): Promise<ImportPlan> {
-  const account = await first<{ id: string; type: AccountType }>(db, 'SELECT id, type FROM accounts WHERE id = ? AND archived_at IS NULL', input.accountId);
+  const account = await first<{ id: string; type: AccountType; opened_on: string | null }>(
+    db,
+    'SELECT id, type, opened_on FROM accounts WHERE id = ? AND archived_at IS NULL',
+    input.accountId,
+  );
   if (!account) throw new HttpError(404, 'Account not found');
   if (account.type === 'parent_paid') throw new HttpError(400, "Statements can't be imported into Paid by parent");
 
@@ -145,8 +165,10 @@ export async function planImport(db: D1Database, input: ImportInput, ctx?: { rul
   const settings = ctx?.settings ?? (await loadSettings(db));
   const importId = uuid();
   const dates = input.rows.map((r) => r.date).sort();
-  const dateFrom = dates[0] ?? null;
-  const dateTo = dates[dates.length - 1] ?? null;
+  // The period a statement covers (used for "statements cover Sep 9 – Oct 1" in setup):
+  // from its own balances when it has them, otherwise its first and last rows.
+  const dateFrom = input.openingBalance ? addDays(input.openingBalance.asOf, 1) : (dates[0] ?? null);
+  const dateTo = input.balance?.asOf && (!dates.length || input.balance.asOf >= dates[dates.length - 1]) ? input.balance.asOf : (dates[dates.length - 1] ?? null);
 
   const previous = await first<{ id: string }>(
     db,
@@ -159,20 +181,41 @@ export async function planImport(db: D1Database, input: ImportInput, ctx?: { rul
   let fresh = input.rows;
   let duplicates: ParsedRow[] = [];
   if (dateFrom && dateTo) {
-    const existing = await all<{ external_id: string | null; dedupe_key: string | null }>(
+    const existing = await all<{ external_id: string | null; dedupe_key: string | null; posted_date: string; amount_cents: number; file_type: string | null }>(
       db,
-      'SELECT external_id, dedupe_key FROM transactions WHERE account_id = ? AND posted_date BETWEEN ? AND ?',
+      `SELECT t.external_id, t.dedupe_key, t.posted_date, t.amount_cents, COALESCE(i.file_type, i.format) AS file_type
+       FROM transactions t LEFT JOIN imports i ON i.id = t.import_id
+       WHERE t.account_id = ? AND t.posted_date BETWEEN ? AND ?`,
       input.accountId,
       addDays(dateFrom, -45),
       addDays(dateTo, 45),
     );
     const keyCounts = new Map<string, number>();
     const externalIds = new Set<string>();
+    // The same period imported in another format (a PDF, then a CSV download) has different
+    // descriptions, so lines from other formats are compared by date and amount instead.
+    const otherFormat = new Map<string, number>();
     for (const e of existing) {
       if (e.external_id) externalIds.add(e.external_id);
       if (e.dedupe_key) keyCounts.set(e.dedupe_key, (keyCounts.get(e.dedupe_key) ?? 0) + 1);
+      if (e.file_type && e.file_type !== input.format) {
+        const k = `${e.posted_date}|${e.amount_cents}`;
+        otherFormat.set(k, (otherFormat.get(k) ?? 0) + 1);
+      }
     }
     ({ fresh, duplicates } = splitDuplicates(input.rows, { externalIds, keyCounts }));
+    if (otherFormat.size) {
+      const kept: ParsedRow[] = [];
+      for (const row of fresh) {
+        const k = `${row.date}|${row.amountCents}`;
+        const n = otherFormat.get(k) ?? 0;
+        if (n > 0) {
+          otherFormat.set(k, n - 1);
+          duplicates.push(row);
+        } else kept.push(row);
+      }
+      fresh = kept;
+    }
   }
 
   // 2–3. Merchant + classification.
@@ -244,32 +287,34 @@ export async function planImport(db: D1Database, input: ImportInput, ctx?: { rul
     }
   }
 
-  // 6. Balance check against the statement's own balance.
-  let snapshot: ImportPlan['snapshot'] = null;
-  if (input.balance) {
-    const snaps = await all<{ as_of_date: string; balance_cents: number }>(
-      db,
-      'SELECT as_of_date, balance_cents FROM balance_snapshots WHERE account_id = ? AND as_of_date <= ?',
-      account.id,
-      input.balance.asOf,
-    );
-    const latest = snaps.reduce<string | null>((m, s) => (!m || s.as_of_date > m ? s.as_of_date : m), null);
-    const moves = latest
-      ? await all<{ posted_date: string; amount_cents: number }>(
-          db,
-          'SELECT posted_date, amount_cents FROM transactions WHERE account_id = ? AND posted_date > ? AND posted_date <= ?',
-          account.id,
-          latest,
-          input.balance.asOf,
-        )
-      : [];
-    const check = checkBalance(
-      snaps.map((s) => ({ asOf: s.as_of_date, cents: s.balance_cents })),
-      [...moves.map((m) => ({ date: m.posted_date, amountCents: m.amount_cents })), ...newTxs.map((t) => ({ date: t.date, amountCents: t.amountCents }))],
-      { asOf: input.balance.asOf, cents: input.balance.cents },
-    );
-    snapshot = { ...input.balance, computedCents: check?.computedCents ?? null, differenceCents: check?.differenceCents ?? null };
+  // 6. Balances from the statement: its opening balance (e.g. $0 on the day before the account
+  // opened) and its closing balance, each checked against what Pocket computes.
+  const snaps = (
+    await all<{ as_of_date: string; balance_cents: number }>(db, 'SELECT as_of_date, balance_cents FROM balance_snapshots WHERE account_id = ?', account.id)
+  ).map((x) => ({ asOf: x.as_of_date, cents: x.balance_cents }));
+  const earliest = snaps.reduce<string | null>((m, x) => (!m || x.asOf < m ? x.asOf : m), null);
+  const moves = [
+    ...(
+      await all<{ posted_date: string; amount_cents: number }>(
+        db,
+        'SELECT posted_date, amount_cents FROM transactions WHERE account_id = ? AND posted_date >= ?',
+        account.id,
+        earliest ?? '9999-12-31',
+      )
+    ).map((m) => ({ date: m.posted_date, amountCents: m.amount_cents })),
+    ...newTxs.map((t) => ({ date: t.date, amountCents: t.amountCents })),
+  ];
+  const plan = (b: { asOf: string; cents: number }): SnapshotPlan => {
+    const check = checkBalance(snaps, moves, b);
+    return { ...b, computedCents: check?.computedCents ?? null, differenceCents: check?.differenceCents ?? null };
+  };
+  let openingSnapshot: SnapshotPlan | null = null;
+  if (input.openingBalance) {
+    openingSnapshot = plan(input.openingBalance);
+    snaps.push({ asOf: input.openingBalance.asOf, cents: input.openingBalance.cents });
   }
+  const snapshot: SnapshotPlan | null = input.balance ? plan(input.balance) : null;
+  const setOpenedOn = !account.opened_on && input.openingBalance && input.openingBalance.cents === 0 && (!earliest || earliest >= input.openingBalance.asOf) ? dateFrom : null;
 
   const transferIds = new Set(links.filter((l) => l.type === 'transfer').flatMap((l) => [l.fromId, l.toId]));
   return {
@@ -281,6 +326,8 @@ export async function planImport(db: D1Database, input: ImportInput, ctx?: { rul
     links,
     updates,
     snapshot,
+    openingSnapshot,
+    setOpenedOn,
     alreadyImported: !!previous,
     summary: {
       total: input.rows.length,
@@ -327,8 +374,8 @@ export async function insertTxStatements(db: D1Database, txs: NewTx[], userId: s
         db,
         `INSERT INTO transactions (id, account_id, import_id, source, external_id, dedupe_key, posted_date, amount_cents,
            raw_description, merchant_id, description, note, kind, counterparty, payment_note, funding_source,
-           needs_attention, recurring_item_id, created_by, updated_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM merchants WHERE match_key = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           needs_attention, recurring_item_id, history_import_id, dismissed_attention, created_by, updated_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM merchants WHERE match_key = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         t.id,
         t.accountId,
         t.importId,
@@ -347,16 +394,19 @@ export async function insertTxStatements(db: D1Database, txs: NewTx[], userId: s
         t.fundingSource,
         t.needsAttention,
         t.recurringItemId ?? null,
+        t.historyImportId ?? null,
+        t.dismissedAttention ?? null,
         userId,
         userId,
       ),
       stmt(
         db,
-        'INSERT INTO transaction_lines (id, transaction_id, amount_cents, category_id) VALUES (?, ?, ?, ?)',
+        'INSERT INTO transaction_lines (id, transaction_id, amount_cents, category_id, budget_scope) VALUES (?, ?, ?, ?, ?)',
         uuid(),
         t.id,
         t.amountCents,
         t.kind === 'transfer' ? null : t.categoryId,
+        t.budgetScope ?? null,
       ),
     );
   }
@@ -387,12 +437,13 @@ export async function commitPlan(db: D1Database, plan: ImportPlan, userId: strin
   const statements: D1PreparedStatement[] = [
     stmt(
       db,
-      `INSERT INTO imports (id, account_id, file_name, file_hash, format, date_from, date_to, rows_total, rows_new, rows_duplicate, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO imports (id, account_id, file_name, file_hash, format, file_type, date_from, date_to, rows_total, rows_new, rows_duplicate, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       plan.importId,
       input.accountId,
       input.fileName,
       input.fileHash,
+      input.format === 'pdf' ? 'csv' : input.format,
       input.format,
       summary.dateFrom,
       summary.dateTo,
@@ -408,8 +459,8 @@ export async function commitPlan(db: D1Database, plan: ImportPlan, userId: strin
   if (input.mapping && input.format === 'csv') {
     statements.push(stmt(db, 'UPDATE accounts SET import_mapping = ? WHERE id = ?', JSON.stringify(input.mapping), input.accountId));
   }
-  if (plan.snapshot) {
-    const s = plan.snapshot;
+  for (const snap of [plan.openingSnapshot, plan.snapshot]) {
+    if (!snap) continue;
     statements.push(
       stmt(
         db,
@@ -417,15 +468,16 @@ export async function commitPlan(db: D1Database, plan: ImportPlan, userId: strin
          VALUES (?, ?, ?, ?, 'statement', ?, ?, ?, ?)`,
         uuid(),
         input.accountId,
-        s.asOf,
-        s.cents,
-        s.computedCents,
-        s.differenceCents,
+        snap.asOf,
+        snap.cents,
+        snap.computedCents,
+        snap.differenceCents,
         plan.importId,
         userId,
       ),
     );
   }
+  if (plan.setOpenedOn) statements.push(stmt(db, 'UPDATE accounts SET opened_on = ? WHERE id = ? AND opened_on IS NULL', plan.setOpenedOn, input.accountId));
   statements.push(auditStmt(db, userId, 'import', plan.importId, 'create', undefined, { fileName: input.fileName, ...summary }));
   await db.batch(statements);
 }

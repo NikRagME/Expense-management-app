@@ -243,7 +243,7 @@ export async function updateTransaction(db: D1Database, userId: string, tx: TxDt
     stmt(
       db,
       `UPDATE transactions SET kind = ?, note = ?, description = ?, excluded = ?, posted_date = ?, amount_cents = ?, account_id = ?,
-         needs_attention = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
+         needs_attention = ?, user_edited = MAX(user_edited, ?), updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
       nextKind,
       body.note ?? tx.note,
       body.description ?? tx.description,
@@ -252,6 +252,8 @@ export async function updateTransaction(db: D1Database, userId: string, tx: TxDt
       body.amountCents ?? tx.amountCents,
       body.accountId ?? tx.accountId,
       attention,
+      // A person chose these; a later spreadsheet import must not overwrite them (spec H4).
+      body.kind !== undefined || body.categoryId !== undefined || body.description !== undefined || body.note !== undefined ? 1 : 0,
       user.id,
       tx.id,
     ),
@@ -336,7 +338,7 @@ transactions.put('/:id/splits', async (c) => {
   await db.batch([
     stmt(db, 'DELETE FROM transaction_lines WHERE transaction_id = ?', tx.id),
     ...parts.map((p, i) => stmt(db, 'INSERT INTO transaction_lines (id, transaction_id, amount_cents, category_id, note, sort_order) VALUES (?, ?, ?, ?, ?, ?)', uuid(), tx.id, p.amountCents, p.categoryId, p.note, i)),
-    stmt(db, `UPDATE transactions SET needs_attention = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`, attention, user.id, tx.id),
+    stmt(db, `UPDATE transactions SET needs_attention = ?, user_edited = 1, updated_by = ?, updated_at = datetime('now') WHERE id = ?`, attention, user.id, tx.id),
     auditStmt(db, user.id, 'transaction', tx.id, 'split', tx.lines, parts),
   ]);
   return c.json(await getTx(db, tx.id));
@@ -366,7 +368,7 @@ export async function linkRepayment(db: D1Database, userId: string, tx: TxDto, s
   await db.batch([
     stmt(db, "DELETE FROM transaction_links WHERE type = 'repayment' AND from_id = ?", tx.id),
     stmt(db, "INSERT INTO transaction_links (id, type, from_id, to_id, created_by) VALUES (?, 'repayment', ?, ?, ?)", uuid(), tx.id, spend.id, userId),
-    stmt(db, `UPDATE transactions SET kind = 'repayment', needs_attention = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`, category ? null : 'uncategorized', userId, tx.id),
+    stmt(db, `UPDATE transactions SET kind = 'repayment', needs_attention = ?, user_edited = 1, updated_by = ?, updated_at = datetime('now') WHERE id = ?`, category ? null : 'uncategorized', userId, tx.id),
     stmt(db, 'DELETE FROM transaction_lines WHERE transaction_id = ?', tx.id),
     stmt(db, 'INSERT INTO transaction_lines (id, transaction_id, amount_cents, category_id) VALUES (?, ?, ?, ?)', uuid(), tx.id, tx.amountCents, category),
     auditStmt(db, userId, 'transaction', tx.id, 'repayment_link', undefined, { spendId: spend.id, spend: spend.description }),
@@ -403,7 +405,7 @@ export async function mergeManual(db: D1Database, userId: string, imported: TxDt
     ),
     stmt(
       db,
-      `UPDATE transactions SET kind = ?, note = ?, description = ?, needs_attention = ?, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
+      `UPDATE transactions SET kind = ?, note = ?, description = ?, needs_attention = ?, user_edited = 1, updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
       manual.kind,
       [manual.note, imported.note].filter(Boolean).join(' · '),
       manual.description || imported.description,
@@ -422,6 +424,25 @@ transactions.post('/:id/merge', async (c) => {
   await mergeManual(c.env.DB, c.get('user').id, tx, otherId);
   return c.json(await getTx(c.env.DB, tx.id));
 });
+
+/** Money the parent put in to cover a specific cost (e.g. tuition): not income, nothing to match. */
+export async function markParentFunding(db: D1Database, userId: string, tx: TxDto) {
+  if (tx.amountCents <= 0) throw new HttpError(400, 'Only money coming in can be from a parent to cover a cost');
+  await db.batch([
+    stmt(db, "DELETE FROM transaction_links WHERE type = 'transfer' AND (from_id = ? OR to_id = ?)", tx.id, tx.id),
+    stmt(
+      db,
+      `UPDATE transactions SET kind = 'transfer', needs_attention = NULL, user_edited = 1,
+         dismissed_attention = COALESCE(dismissed_attention || ',', '') || 'transfer_unmatched',
+         note = CASE WHEN note = '' THEN 'From parent, to cover a cost' ELSE note END,
+         updated_by = ?, updated_at = datetime('now') WHERE id = ?`,
+      userId,
+      tx.id,
+    ),
+    stmt(db, 'UPDATE transaction_lines SET category_id = NULL WHERE transaction_id = ?', tx.id),
+    auditStmt(db, userId, 'transaction', tx.id, 'parent_funding'),
+  ]);
+}
 
 export async function dismissAttention(db: D1Database, userId: string, tx: TxDto, reason: AttentionReason) {
   const statements = [auditStmt(db, userId, 'transaction', tx.id, 'dismiss', undefined, { reason })];

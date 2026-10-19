@@ -8,7 +8,8 @@ import { all, first } from '../lib/db';
 import { HttpError } from '../lib/pipeline';
 import { getTx, getTxs, type TxDto } from '../lib/queries';
 import { parseBody } from '../lib/validate';
-import { dismissAttention, linkRepayment, mergeManual, requireTx, updateTransaction, type TransactionPatch } from './transactions';
+import { unmatchedRowCount, unmatchedRows } from './history';
+import { dismissAttention, linkRepayment, markParentFunding, mergeManual, requireTx, updateTransaction, type TransactionPatch } from './transactions';
 
 export const review = new Hono<AppEnv>();
 
@@ -21,7 +22,7 @@ const unmatchedWhere = `t.kind = 'transfer' AND t.excluded = 0 AND t.posted_date
 export async function reviewCount(db: D1Database): Promise<number> {
   const flagged = await first<{ n: number }>(db, 'SELECT COUNT(*) AS n FROM transactions WHERE needs_attention IS NOT NULL AND excluded = 0');
   const unmatched = await first<{ n: number }>(db, `SELECT COUNT(*) AS n FROM transactions t WHERE ${unmatchedWhere}`, addDays(todayIso(), -UNMATCHED_AFTER_DAYS));
-  return (flagged?.n ?? 0) + (unmatched?.n ?? 0);
+  return (flagged?.n ?? 0) + (unmatched?.n ?? 0) + (await unmatchedRowCount(db));
 }
 
 review.get('/', async (c) => {
@@ -58,7 +59,9 @@ review.get('/', async (c) => {
       return { ...t, ...extra };
     }),
   );
-  return c.json({ items, count: items.length });
+  // Spreadsheet rows with no bank line (spec §12.4): decided here too.
+  const sheetRows = await unmatchedRows(db);
+  return c.json({ items, sheetRows, count: items.length + sheetRows.length });
 });
 
 const resolveSchema = z.discriminatedUnion('action', [
@@ -69,6 +72,8 @@ const resolveSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('income') }),
   z.object({ action: z.literal('refund'), categoryId: z.string().nullable().default(null) }),
   z.object({ action: z.literal('transfer') }),
+  // Money the parent put in to cover a specific bill (e.g. tuition).
+  z.object({ action: z.literal('parent_funding') }),
   z.object({ action: z.literal('merge') }),
   z.object({ action: z.literal('keep_separate') }),
   z.object({ action: z.literal('dismiss') }),
@@ -98,6 +103,9 @@ review.post('/:id/resolve', async (c) => {
       break;
     case 'transfer':
       await patch({ kind: 'transfer' });
+      break;
+    case 'parent_funding':
+      await markParentFunding(db, user.id, tx);
       break;
     case 'merge': {
       const link = await first<{ to_id: string }>(db, "SELECT to_id FROM transaction_links WHERE type = 'merge_suggestion' AND from_id = ?", tx.id);

@@ -15,6 +15,7 @@ settings.get('/', async (c) => {
 
 const schema = z.object({
   parentZelleNames: z.array(z.string().trim().min(1).max(60)).max(10).optional(),
+  ownNames: z.array(z.string().trim().min(1).max(60)).max(10).optional(),
   venmoIncomingDefault: z.enum(['ask', 'repayment']).optional(),
 });
 
@@ -25,6 +26,7 @@ settings.patch('/', async (c) => {
   const put = (key: string, value: unknown) =>
     statements.push(stmt(c.env.DB, 'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value', key, JSON.stringify(value)));
   if (body.parentZelleNames) put('parent_zelle_names', body.parentZelleNames);
+  if (body.ownNames) put('own_names', body.ownNames);
   if (body.venmoIncomingDefault) put('venmo_incoming_default', body.venmoIncomingDefault);
   statements.push(auditStmt(c.env.DB, c.get('user').id, 'settings', 'settings', 'update', before, body));
   await c.env.DB.batch(statements);

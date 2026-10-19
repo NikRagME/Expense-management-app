@@ -37,7 +37,12 @@ export function createTestD1(): D1Database & { raw: DatabaseSync } {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = ON;');
   const dir = path.join(import.meta.dirname, '..', '..', 'migrations');
-  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+  // Like D1, each migration runs in its own transaction (needed for defer_foreign_keys).
+  for (const f of fs.readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) {
+    db.exec('BEGIN');
+    db.exec(fs.readFileSync(path.join(dir, f), 'utf8'));
+    db.exec('COMMIT');
+  }
 
   const d1 = {
     raw: db,

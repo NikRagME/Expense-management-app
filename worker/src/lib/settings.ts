@@ -6,6 +6,7 @@ export async function loadSettings(db: D1Database): Promise<Settings> {
   const map = new Map(rows.map((r) => [r.key, parseJson<unknown>(r.value, null)]));
   return {
     parentZelleNames: (map.get('parent_zelle_names') as string[] | null) ?? [],
+    ownNames: (map.get('own_names') as string[] | null) ?? [],
     venmoIncomingDefault: map.get('venmo_incoming_default') === 'repayment' ? 'repayment' : 'ask',
   };
 }
