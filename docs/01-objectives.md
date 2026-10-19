@@ -14,11 +14,21 @@ visibility first, then reflection and budgeting, then goals and good credit habi
 
 ## 2. Background and problem
 
-- She has **3 accounts**: 2 bank accounts and 1 credit card, all in the **USA (USD)**.
-  She uses each one differently, so her spending is spread across three places.
+- She has **3 accounts** at US institutions, all in **USD**, and uses each one differently,
+  so her spending is spread across several places:
+
+  | Account | Institution | Type |
+  |---|---|---|
+  | Bank account 1 | Citibank | Checking/savings |
+  | Bank account 2 | SFCU (Stanford Federal Credit Union) | Checking/savings |
+  | Credit card | SFCU | Credit card |
+
+- She also uses **Venmo** for shared expenses with friends. Venmo payments show up at the bank
+  only as a lump "VENMO" line, so the real detail (who, and what for) lives in Venmo.
+- She uses **very little cash**.
 - She has **never budgeted before**. She doesn't need rules imposed on her yet. She first
   needs a clear, trustworthy picture of where her money goes.
-- Her income is an **allowance from her parent**.
+- Her income is an **allowance from her parent, paid by Zelle**.
 
 ## 3. Users and roles
 
@@ -58,13 +68,19 @@ architecture leaves room for them, and will be specced when we get there.
 ### Phase 1 — Visibility *(committed; ASAP)*
 Goal: **all three accounts in one accurate, single view of spending, from this month onward.**
 
-- Set up her 3 accounts (2 bank, 1 credit card).
+- Set up her accounts: Citibank, SFCU bank and SFCU credit card, plus Venmo (proposed, see §10).
 - Get transactions in by:
-  - **importing bank/card statements** (CSV/OFX downloads), with automatic duplicate detection
-  - **quick manual entry** on her phone (cash, or logging a purchase right after making it).
-- **Categories**, with automatic categorisation of repeat merchants once she has categorised one.
-- **Transfers and card payments** recognised and excluded from spending.
-- **Allowance** recorded as income.
+  - **importing statements** (CSV/OFX downloads from Citibank and SFCU; CSV from Venmo), with
+    automatic duplicate detection
+  - **quick manual entry** on her phone (for the occasional cash spend, or logging a purchase
+    right after making it). This is secondary, since she uses little cash.
+- **Categories:** a default student category list that she can edit, with automatic
+  categorisation of repeat merchants once she has categorised one.
+- **Transfers and card payments** recognised and excluded from spending. This includes moving money
+  between Citibank and SFCU, paying the SFCU card, and topping up or cashing out Venmo.
+- **Allowance** (Zelle from parent) recognised and recorded as income.
+- **Shared expenses on Venmo:** when friends pay her back, the repayment reduces what the
+  purchase actually cost her, rather than counting as income.
 - **Single view:** one list of all transactions across accounts, plus a simple overview of
   spending by month, category and account.
 - Google sign-in for the two users; works on the iPhone home screen.
@@ -74,6 +90,10 @@ Goal: **all three accounts in one accurate, single view of spending, from this m
 - **Need vs want** tag on each spend.
 - **Weekly review ritual:** a guided ~5-minute check-in, with a reminder at a time she chooses.
 - **Zero-based budget:** give each allowance dollar a job. Soft, never restrictive.
+- **Budget scope, agreed together:** many items are grey areas (does it come out of her budget,
+  or is it covered separately?). Parent and daughter jointly tag items as *in budget*,
+  *outside budget* or *not sure yet*. Over time these tags become shared rules that apply
+  automatically, so the boundary gets clearer as they go. (The Phase 1 data model leaves room for this tag.)
 - **Monthly insights** in plain English (e.g. "Food up 30% vs last month, mostly weekends").
 - **Nudges:** a "Rate this?" prompt on new transactions, and a weekly or monthly digest for the parent.
 
@@ -124,13 +144,24 @@ Habit, behaviour-change and goal metrics are **deliberately deferred** until lat
 | Maintenance | Parent + Claude; no stack preference (to be chosen in the Architecture stage) |
 | Data sensitivity | Real personal financial data. Must be private, encrypted in transit, and backed up. |
 
-## 10. Open questions for the Spec stage
+## 10. Decisions and open questions
 
-1. **Which banks and card issuer?** Each one exports statements in its own CSV/OFX format, so the spec needs the names.
-2. **How is the allowance paid** (Zelle, Venmo, direct transfer, cash)? If she uses **Venmo, Cash App or
-   PayPal**, should each be treated as a fourth "account"?
-3. How much **cash** does she spend? This sets how prominent manual entry should be.
-4. Are there **shared costs** the parent pays directly (phone plan, rent, tuition) that should appear in her picture?
-5. **Starting categories:** use a sensible student default list (food, groceries, transport, going out,
-   shopping, subscriptions, school, personal care, …) and let her edit it?
-6. Should she have **input on these objectives** before we spec, so she feels ownership of the app?
+### Resolved
+
+| Question | Answer |
+|---|---|
+| Banks and card issuer | Citibank (bank), SFCU (bank), SFCU (credit card) |
+| How the allowance is paid | Zelle from parent |
+| Other payment apps | Venmo, for shared expenses with friends |
+| Cash usage | Very little, so manual entry is secondary |
+| Starting categories | A default student list that she can edit |
+| What counts against the budget | Many grey areas. Clarified jointly over time through budget-scope tags (Phase 2). |
+
+### Still open
+
+1. **Venmo as a fourth account (proposed: yes).** Importing her Venmo statement (CSV) is the only
+   way to see what each Venmo payment was for and to match friends' repayments against shared
+   costs. Without it, all Venmo activity is one opaque "VENMO" line. Please confirm.
+2. **Costs the parent pays directly** (phone plan, rent, tuition, insurance): should these appear
+   in her picture (perhaps as *outside budget*) so she sees the true cost of her life, or stay out entirely?
+3. Should she have **input on these objectives** before we spec, so she feels ownership of the app?
