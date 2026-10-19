@@ -70,7 +70,7 @@ These phases are a proposal. Only Phase 1 is committed; later phases are recorde
 architecture leaves room for them, and will be specced when we get there.
 
 ### Phase 1 — Visibility *(committed; ASAP)*
-Goal: **all three accounts in one accurate, single view of spending, from this month onward.**
+Goal: **all her accounts in one accurate, single view of spending, from the day each account was opened.**
 
 - Set up her 4 accounts: Citibank, SFCU bank, SFCU credit card and Venmo. **More accounts can be
   added at any time** (a new card, a savings account, another payment app).
@@ -126,7 +126,7 @@ Goal: **all three accounts in one accurate, single view of spending, from this m
 Phase 1 succeeds when:
 
 1. **All 4 accounts** (Citibank, SFCU bank, SFCU card, Venmo) and the parent-paid costs are in
-   the app and up to date from the start month onward.
+   the app and up to date from each account's opening day onward.
 2. **The numbers can be trusted:** totals reconcile with the bank and card statements, and
    transfers and card payments are not double counted.
 3. **She can answer** "How much did I spend last month, on what, and what does my life cost
@@ -151,7 +151,7 @@ Habit, behaviour-change and goal metrics are **deliberately deferred** until lat
 | Devices | Daughter: iPhone. Parent: any browser. |
 | Sign-in | Google accounts, restricted to the two named users |
 | Running cost | Near-free (target < $5/month) |
-| History | Start tracking from the current month; no back-import required |
+| History | **Full history from each account's opening day** (all accounts are under a year old). Bank statements give exact amounts; her existing Excel tracking spreadsheet adds her categories and notes. *(Changed from "start this month": see spec §12.)* |
 | Maintenance | Parent + Claude; no stack preference (to be chosen in the Architecture stage) |
 | Data sensitivity | Real personal financial data. Must be private, encrypted in transit, and backed up. |
 

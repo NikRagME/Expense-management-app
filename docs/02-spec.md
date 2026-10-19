@@ -498,3 +498,118 @@ multiple currencies.
 | **A11** | Adding accounts | **Decided** | Any number of accounts of any type can be added later; nothing is hard-coded to the starting four (§4.4) |
 
 "Accepted" means no change was requested to the proposed default. Any decision can still be revisited.
+
+---
+
+## 12. History setup: bringing accounts up to date from opening day
+
+> **Status:** Draft for review · added after Phase 1 was built.
+> Changes the earlier "start tracking from this month" decision: Pocket now holds the **full history** of each account.
+
+### 12.1 Situation
+
+- Her accounts are **all under a year old**, so each bank still lets her download statements back to the day the account was opened.
+- She has been tracking **everything** in an Excel spreadsheet: purchases, allowance, transfers, card payments and Venmo. It holds her categories and notes.
+- The spreadsheet layout isn't known yet (one sheet with an account column, one tab per account, or no account column). Setup handles all three.
+
+### 12.2 Approach: statements are the truth, the spreadsheet adds her knowledge
+
+| Source | What it contributes |
+|---|---|
+| **Bank statements from opening day** | Exact amounts, dates and balances. Duplicates and transfers are handled exactly as in regular imports (§4–5). |
+| **Her spreadsheet** | Her **categories, notes and descriptions**, copied onto the matching bank lines. Rows with no bank line (e.g. cash) are added on their own. |
+
+The spreadsheet is never the source of amounts for anything the bank also recorded, so a typo in the spreadsheet can't make a balance wrong.
+
+### 12.3 The setup flow (More → Set up history)
+
+A guided, four-step checklist. Each step shows its status (✓ done / in progress / not started), and the steps can be revisited.
+
+**Step 1 · Accounts and opening day**
+- For each account: **opening date** and **opening balance** (default $0; the card defaults to $0 owed).
+- This becomes the account's first known balance, recorded at the end of the day before opening, so every later balance rolls forward from it.
+
+**Step 2 · Bank statements back to opening**
+- One row per account showing coverage, e.g. "Statements cover Mar 3 – Oct 15", with gaps flagged.
+- Uses the existing import screen (§4.1). Several files per account are fine; overlaps are skipped.
+- Done when each account is covered from its opening date to roughly today.
+
+**Step 3 · Bring in the spreadsheet**
+1. Upload the **Excel file (.xlsx)** directly, or a CSV export.
+2. **Pick the sheet(s).** If there's one tab per account, each tab is assigned to an account.
+3. **Match the columns** (with a live preview):
+
+   | Column | Required? |
+   |---|---|
+   | Date | Yes |
+   | Amount, or separate money-out / money-in columns | Yes |
+   | Description | Yes |
+   | Category | Optional |
+   | Account | Optional |
+   | Note | Optional |
+   | Type (e.g. "transfer", "income") | Optional |
+
+   Plus a sign setting: are expenses shown as positive or negative?
+4. **Match her categories to Pocket's.** Each distinct spreadsheet category (e.g. "Food – eating out") is mapped to a Pocket category, or creates a new one. Obvious names are pre-filled. The mapping is saved.
+5. **Preview** before anything changes:
+   - matched to a bank line
+   - will be added (no bank line)
+   - couldn't be matched
+   - categories applied.
+6. **Apply.** One step to undo, as with imports.
+
+**Step 4 · Check the balances**
+- Enter today's balance for each account from the bank's app. Pocket runs the balance check (§4.5) over the whole history: ✓ means everything from opening day to today adds up.
+
+### 12.4 Matching rules (spreadsheet row ↔ bank line)
+
+| Rule | Detail |
+|---|---|
+| **Amount** | Same amount, after applying the sign setting. |
+| **Account** | Same account when the row says which one; otherwise, any account. |
+| **Date** | Within **±4 days**. Card purchases often post a few days after she wrote them down. |
+| **Ties** | Broken by closest date, then by how similar the descriptions are. A row is only matched when one candidate is clearly best; otherwise it goes to Review. |
+| **One-to-one** | Each bank line takes at most one spreadsheet row. |
+
+**When matched**, the bank line keeps its amount, date and account, and takes from the spreadsheet:
+- her **category**: overwritten only if the line was uncategorised or categorised by a built-in hint, never one she or you set in Pocket
+- her **note**
+- her **description**, as the display name (the bank's original text stays visible)
+- her **type**, if given. E.g. "transfer" or "income" resolves a "money in: what is it?" card.
+
+**Not matched:**
+
+| Case | What happens |
+|---|---|
+| Row for a cash account, or for a date no statement covers | **Added** as its own transaction, marked "from spreadsheet". |
+| Row that should have a bank line but none was found | Goes to **Review** as "In your spreadsheet but not on the statement", with options to add it anyway, pick the bank line by hand, or skip. |
+| Bank line with no spreadsheet row | Classified as usual (rules, hints, Review). |
+
+**Learning rules:** after applying, Pocket offers to **create rules from the spreadsheet**, e.g. "34 shops she always categorised the same way" (excluding Venmo friends), so future imports sort themselves.
+
+### 12.5 Screens
+
+| ID | Screen |
+|---|---|
+| **S11** | **Set up history**: the four-step checklist with per-account coverage and balance status. Reachable from More, and offered on Home while setup is incomplete. |
+| **S12** | **Spreadsheet import**: sheet picker → column mapping → category mapping → preview → apply. |
+| **S7 (extended)** | New Review card: "In your spreadsheet but not on the statement". |
+
+### 12.6 Data model additions
+
+- `accounts.opened_on`, plus an opening-balance snapshot.
+- `imports.format` gains `'spreadsheet'`.
+- New table `history_matches (import_id, transaction_id, before_json)`. It records what each matched bank line looked like before the spreadsheet changed it, so **undo restores it exactly**.
+- New table `category_mappings (source_name, category_id)` holds the saved category mapping.
+- Transactions added from the spreadsheet have `source = 'import'` with the spreadsheet import's id, so they undo with it.
+
+### 12.7 Assumptions
+
+| # | Assumption | Alternative |
+|---|---|---|
+| **H1** | Statements are imported **before** the spreadsheet; setup leads in that order. | If the spreadsheet comes first, its rows are held as "waiting for a statement" and matched when statements arrive. |
+| **H2** | Opening balance defaults to $0. | Ask for the first deposit amount instead. |
+| **H3** | Date window ±4 days. | Tighter or looser once we see her real data. |
+| **H4** | Her categories never overwrite a category already chosen in Pocket. | The spreadsheet always wins. |
+| **H5** | Excel `.xlsx` is read directly; older `.xls` files need to be re-saved as `.xlsx` or CSV. | |
+| **H6** | A sample of her spreadsheet (amounts can be blurred) will tune the column guessing, like the bank statement samples. | |
