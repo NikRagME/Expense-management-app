@@ -1,6 +1,6 @@
 # 02 — Product Spec (Phase 1: Visibility)
 
-> **Status:** Draft for review · **Stage:** 2 of 4 · Builds on [`01-objectives.md`](01-objectives.md)
+> **Status:** Approved · **Stage:** 2 of 4 · Builds on [`01-objectives.md`](01-objectives.md)
 >
 > Items marked **[A#]** are assumptions or decisions. They are tracked together in §11.
 
