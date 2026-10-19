@@ -1,7 +1,7 @@
 # 01 — Objectives
 
-> **Status:** Draft for review · **Stage:** 1 of 4 (Objectives → Spec → Architecture → Build)
-> Next stage (`02-spec.md`) starts once this document is approved.
+> **Status:** Approved · **Stage:** 1 of 4 (Objectives → Spec → Architecture → Build)
+> Next: `02-spec.md`.
 
 ## 1. Vision
 
@@ -24,7 +24,11 @@ visibility first, then reflection and budgeting, then goals and good credit habi
   | Credit card | SFCU | Credit card |
 
 - She also uses **Venmo** for shared expenses with friends. Venmo payments show up at the bank
-  only as a lump "VENMO" line, so the real detail (who, and what for) lives in Venmo.
+  only as a lump "VENMO" line, so the real detail (who, and what for) lives in Venmo. Venmo is
+  therefore tracked as a **fourth account**.
+- Her **parent pays some of her costs directly** (for example her phone plan, rent, tuition or
+  insurance). These belong in her picture too, so she understands her **true overall cost of living**,
+  not just the part she pays herself.
 - She uses **very little cash**.
 - She has **never budgeted before**. She doesn't need rules imposed on her yet. She first
   needs a clear, trustworthy picture of where her money goes.
@@ -68,7 +72,7 @@ architecture leaves room for them, and will be specced when we get there.
 ### Phase 1 — Visibility *(committed; ASAP)*
 Goal: **all three accounts in one accurate, single view of spending, from this month onward.**
 
-- Set up her accounts: Citibank, SFCU bank and SFCU credit card, plus Venmo (proposed, see §10).
+- Set up her 4 accounts: Citibank, SFCU bank, SFCU credit card and Venmo.
 - Get transactions in by:
   - **importing statements** (CSV/OFX downloads from Citibank and SFCU; CSV from Venmo), with
     automatic duplicate detection
@@ -79,6 +83,9 @@ Goal: **all three accounts in one accurate, single view of spending, from this m
 - **Transfers and card payments** recognised and excluded from spending. This includes moving money
   between Citibank and SFCU, paying the SFCU card, and topping up or cashing out Venmo.
 - **Allowance** (Zelle from parent) recognised and recorded as income.
+- **Costs paid by parent:** the parent records costs paid on her behalf (one-off or recurring,
+  e.g. a monthly phone plan) as a "Paid by parent" source. The overview shows both
+  **what she spent** and her **total cost of living** (her spending + parent-paid costs).
 - **Shared expenses on Venmo:** when friends pay her back, the repayment reduces what the
   purchase actually cost her, rather than counting as income.
 - **Single view:** one list of all transactions across accounts, plus a simple overview of
@@ -116,10 +123,12 @@ Goal: **all three accounts in one accurate, single view of spending, from this m
 
 Phase 1 succeeds when:
 
-1. **All 3 accounts** are in the app and up to date from the start month onward.
+1. **All 4 accounts** (Citibank, SFCU bank, SFCU card, Venmo) and the parent-paid costs are in
+   the app and up to date from the start month onward.
 2. **The numbers can be trusted:** totals reconcile with the bank and card statements, and
    transfers and card payments are not double counted.
-3. **She can answer** "How much did I spend last month, and on what?" in under a minute, on her phone.
+3. **She can answer** "How much did I spend last month, on what, and what does my life cost
+   overall?" in under a minute, on her phone.
 4. **Keeping it current takes under ~10 minutes a week** (statement import plus tidying categories).
 
 Habit, behaviour-change and goal metrics are **deliberately deferred** until later phases.
@@ -144,7 +153,7 @@ Habit, behaviour-change and goal metrics are **deliberately deferred** until lat
 | Maintenance | Parent + Claude; no stack preference (to be chosen in the Architecture stage) |
 | Data sensitivity | Real personal financial data. Must be private, encrypted in transit, and backed up. |
 
-## 10. Decisions and open questions
+## 10. Decisions
 
 ### Resolved
 
@@ -156,12 +165,8 @@ Habit, behaviour-change and goal metrics are **deliberately deferred** until lat
 | Cash usage | Very little, so manual entry is secondary |
 | Starting categories | A default student list that she can edit |
 | What counts against the budget | Many grey areas. Clarified jointly over time through budget-scope tags (Phase 2). |
+| Venmo | Tracked as a **fourth account** via its CSV statement |
+| Costs the parent pays directly | **Included**, so she sees her overall cost of living |
+| Daughter reviewing objectives | Not needed |
 
-### Still open
-
-1. **Venmo as a fourth account (proposed: yes).** Importing her Venmo statement (CSV) is the only
-   way to see what each Venmo payment was for and to match friends' repayments against shared
-   costs. Without it, all Venmo activity is one opaque "VENMO" line. Please confirm.
-2. **Costs the parent pays directly** (phone plan, rent, tuition, insurance): should these appear
-   in her picture (perhaps as *outside budget*) so she sees the true cost of her life, or stay out entirely?
-3. Should she have **input on these objectives** before we spec, so she feels ownership of the app?
+All Stage 1 questions are resolved.
