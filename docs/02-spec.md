@@ -2,7 +2,7 @@
 
 > **Status:** Draft for review · **Stage:** 2 of 4 · Builds on [`01-objectives.md`](01-objectives.md)
 >
-> Items marked **[A#]** are assumptions I made. They are listed together in §11 for you to confirm or change.
+> Items marked **[A#]** are assumptions or decisions. They are tracked together in §11.
 
 ## 1. What Phase 1 delivers
 
@@ -25,7 +25,7 @@ reserves room for them (§9).
 | **Account** | A place her money lives: Citibank, SFCU Checking, SFCU Credit Card, Venmo. There is also one **virtual account**, *Paid by parent*, for costs paid on her behalf. |
 | **Transaction** | One line of money in or out of an account, from a statement import or manual entry. |
 | **Kind** | What a transaction *means*. This is the heart of "one trustworthy view" (see below). |
-| **Category** | What the spending was *for*: Groceries, Eating out, and so on. Applies to spending kinds only. |
+| **Category** | What the spending was *for*: Groceries, Eating out, and so on. Applies to spending kinds only. A transaction has one category by default, or can be **split** across several (§5.3). |
 | **Merchant** | A cleaned-up payee name (`SQ *BLUE BOTTLE 0423 PALO ALTO` → *Blue Bottle*). |
 | **Rule** | "Always treat merchant X as category Y / kind Z." Created when she categorises something. |
 | **Import** | One uploaded statement file for one account. Can be undone as a whole. |
@@ -131,7 +131,7 @@ These rules make the single view trustworthy. When a rule isn't confident, the t
 | **Between her bank accounts** | Debit in one bank + credit of the same amount in the other within ±5 days, or a description containing "TRANSFER" | Transfer pair |
 | **Venmo paid from a bank** | Bank line "VENMO" + Venmo row whose funding source is that bank, same amount | Bank line → Transfer. The **Venmo row is the Spend** (it has the who and the what). |
 | **Venmo top-up / cash-out** | Venmo "Standard Transfer" + matching bank line | Transfer pair |
-| **Friend pays her on Venmo** | Incoming Venmo payment from anyone other than the parent | **Needs attention**: "Is this a repayment for something you paid for, or something else?" Optionally link it to the original spend. **[A5]** |
+| **Friend pays her on Venmo** | Incoming Venmo payment from anyone other than the parent | **Needs attention**: "Is this a repayment for something you paid for, or something else?" Optionally link it to the original spend. **[A5 — open]** |
 | **Card refund** | Credit on the card that isn't a payment | Refund, in the original merchant's category |
 | **Unmatched transfer-looking line** | A transfer description with no matching other side yet | Transfer (unconfirmed). It pairs up automatically once the other account is imported. |
 
@@ -148,6 +148,20 @@ When she categorises a transaction from a new merchant, the app offers:
 "Always put **Blue Bottle** in **Coffee & snacks**?" → `Yes` / `Just this once`.
 
 Rules can be viewed, edited and deleted in Settings.
+
+### 5.3 Splits
+
+Some purchases cover several categories, such as a Target run of groceries plus clothing.
+
+- **The default is one category.** Splitting is optional, behind a **Split** button on the transaction.
+- A split divides the transaction into **2 or more parts**, each with its own amount, category and
+  optional note.
+  - The parts must add up exactly to the transaction amount. The last part auto-fills with the remainder.
+  - Rules only ever set a single category. Splits are always done by hand.
+- **Reports** (Home, category totals, filters) count each part under its own category. The bank
+  line itself still appears **once** in Activity, marked "Split · 2 categories".
+- **Un-split** returns the transaction to a single category.
+- Refunds and repayments can be split the same way.
 
 ### 5.2 Default categories **[A6]**
 
@@ -213,7 +227,10 @@ The one-minute answer to her three questions.
 └─────────────────────────────┘
 ```
 
-- **Month switcher.** Calendar months. **[A7]**
+- **Period switcher.** Defaults to calendar months, but the period definition is **left open [A7]**,
+  and the app must not hard-code it. Every total is computed for an arbitrary *from–to* date range,
+  so we can later switch to allowance-to-allowance months, weeks or custom ranges without rework.
+  A **custom range** option is available from day one.
 - **Cost of living** toggle: show her spending alone, or including parent-paid costs.
 - **Category bars:**
   - groups first; tap a group to see its categories
@@ -254,6 +271,8 @@ The one-minute answer to her three questions.
 
 - Amount, date, account, original bank description (read-only), cleaned merchant name.
 - **Kind** (Spend / Refund / Repayment / Income / Transfer), **Category** and **Note**.
+- **Split** button: divides the transaction into parts, each with an amount and a category (§5.3).
+  The remaining amount is shown live ("$12.40 left to assign").
 - **Linked items:** a transfer's other side; a repayment's original spend (e.g. "Maya paid back $18 of
   your $36 dinner → your share was $18").
 - "Create rule for this merchant" prompt.
@@ -263,6 +282,7 @@ The one-minute answer to her three questions.
 ### S5 · Quick add (＋)
 A big amount pad, then merchant, then category chips (her most-used first), then account and date
 (both defaulted). Save takes **3 taps plus typing**. Parents also see a "Paid by parent" toggle.
+A small **Split** link sits under the category chips for the rare case it's needed.
 
 ### S6 · Import
 
@@ -409,21 +429,23 @@ Phase 1 does not build these, but the data model includes the fields so later ph
 
 Budgets, ratings, need/want tags, weekly reflection, insights, notifications or reminders, receipts,
 email or SMS capture, bank sync, balances and credit health, goals, gamification beyond friendly copy,
-splitting one transaction across several categories, multiple currencies.
+multiple currencies.
 
 ---
 
-## 11. Assumptions to confirm
+## 11. Assumptions and decisions
 
-| # | Assumption | Alternative |
-|---|---|---|
-| **A1** | Exactly two Google accounts on an allow-list | Add a second parent? |
-| **A2** | Citi, SFCU and Venmo all offer CSV (and SFCU offers OFX/QFX) downloads | **Action:** please download one sample file from each (I'll design the importer around real files; amounts can be redacted) |
-| **A3** | Manual entries are matched to later imports (same account, same amount, ±3 days) | Keep them separate |
-| **A4** | Recurring parent-paid costs are added automatically each period | Parent enters each one manually |
-| **A5** | Incoming Venmo from friends always asks rather than guessing | Default every incoming payment to "Repayment" |
-| **A6** | The default category list in §5.2 | Edit the list |
-| **A7** | Calendar months (1st–end) | Month runs from allowance day to allowance day |
-| **A8** | No account balances in Phase 1 | Show the balance from the latest statement |
-| **A9** | Offline not required in Phase 1 | Make quick add work offline |
-| **A10** | Splitting one purchase across categories (e.g. Target: groceries + clothing) is not supported in Phase 1 | Add simple splits to Phase 1 |
+| # | Topic | Status | Decision |
+|---|---|---|---|
+| **A1** | Who can sign in | Accepted | Exactly two Google accounts on an allow-list |
+| **A2** | Statement formats | **Deferred** | Sample files from Citi, SFCU checking, the SFCU card and Venmo will be collected later. The importer is built with a configurable column mapping, so it doesn't depend on knowing the formats up front; it will be tuned once real files arrive. |
+| **A3** | Manual entry vs import | Accepted | Suggest a merge when the same account and amount appear within ±3 days |
+| **A4** | Recurring parent-paid costs | Accepted | Added automatically each period; each one can be edited or skipped |
+| **A5** | Incoming Venmo from friends | **Open** | Not decided yet. Interim behaviour: always ask in the Review queue (the safe option, since nothing is guessed). Built as a **setting**, so it can switch to "default to Repayment" once we see real usage. |
+| **A6** | Default categories | Accepted | The list in §5.2 |
+| **A7** | What a "month" is | **Open** | Calendar month by default; all totals work on arbitrary date ranges so the definition can change later (§6, S2) |
+| **A8** | Account balances | Accepted | Not in Phase 1 (added in Phase 4) |
+| **A9** | Offline | Accepted | Not required in Phase 1 |
+| **A10** | Splitting a purchase | **Decided: in Phase 1** | One category by default, with a **Split** button to divide it across categories (§5.3) |
+
+"Accepted" means no change was requested to the proposed default; any of these can still be revisited.
