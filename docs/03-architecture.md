@@ -2,7 +2,9 @@
 
 > **Status:** Approved · **Stage:** 3 of 4 · Implements [`02-spec.md`](02-spec.md) (Phase 1)
 >
-> Decisions marked **[D#]** are summarised in §14 for confirmation.
+> Decisions marked **[D#]** are summarised in §14.
+>
+> **Build notes:** the app is named *Pocket* (easy to rename). Queries use plain SQL with small typed helpers rather than an ORM, which keeps money queries explicit and dependency-free.
 
 ## 1. Summary
 
@@ -77,7 +79,7 @@ These limits will be re-verified at build time.
   src/api/        typed API client + TanStack Query hooks
 /worker           Cloudflare Worker
   src/routes/     auth, accounts, transactions, imports, review, reports, …
-  src/db/         Drizzle schema + query helpers
+  src/lib/        auth, typed SQL helpers, import pipeline (plain SQL; no ORM)
   src/jobs/       nightly cron (backup, recurring)
 /shared           pure TypeScript domain logic, used by both web and worker
   money.ts        integer-cents helpers & formatting
@@ -136,7 +138,7 @@ shared with the front end.
 | Parent-paid | `GET/POST /api/recurring` · `PATCH/DELETE /:id` |
 | Reports | `GET /api/reports/overview?from&to` (Home: spending, cost of living, money in, by group/category/account, balances, freshness) |
 | Settings | `GET/PATCH /api/settings` (allow-list, parent's Zelle name, Venmo-incoming behaviour [A5]) |
-| Export | `GET /api/export.zip` (CSV of every table) |
+| Export | `GET /api/export/transactions.csv` (one row per category line) · `GET /api/export/backup.json` (every table) |
 
 Reports take an arbitrary `from`/`to` range, so the definition of a "month" stays open (A7).
 
@@ -324,7 +326,7 @@ file ─► detect format ─► parse ─► rows ─► 1 dedupe  (external_id
 - **Unit (Vitest):** `/shared`, the money core. Parsers, merchant cleaning, classification, transfer matching,
   splits summing exactly, balance roll-forward and reporting definitions.
   Golden-file tests use (redacted) real statement samples once available.
-- **Integration:** API routes against a real local D1 (Workers test pool).
+- **Integration:** API routes against the real migrations, using a D1-compatible test database on Node's built-in SQLite.
 - **End-to-end (Playwright):** sign in (stubbed Google), import → review → Home totals, split a
   transaction, enter a balance → ✓.
 

@@ -1,0 +1,127 @@
+@import 'tailwindcss';
+
+/* Semantic tokens. Components use these (bg-surface, text-ink…), never raw hex. */
+:root {
+  color-scheme: light;
+  --bg: #f7f6fb;
+  --surface: #ffffff;
+  --surface-2: #f1effa;
+  --ink: #17151f;
+  --ink-2: #4d4a5c;
+  --muted: #8a8698;
+  --line: #e6e3ef;
+  --brand: #5b4bd1;
+  --brand-ink: #ffffff;
+  --brand-soft: #ece9fd;
+  --good: #0b7a35;
+  --good-soft: #e3f5e9;
+  --warn: #9a5b00;
+  --warn-soft: #fdf1dc;
+  --bad: #b42323;
+  --bad-soft: #fde8e8;
+  --coin: #ffc94a;
+
+  /* Category-group colours: validated categorical palette, fixed order. */
+  --g1: #2a78d6;
+  --g2: #eb6834;
+  --g3: #1baf7a;
+  --g4: #eda100;
+  --g5: #e87ba4;
+  --g6: #008300;
+  --g7: #6250d6;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0f0e14;
+    --surface: #1a1922;
+    --surface-2: #24222e;
+    --ink: #f1f0f6;
+    --ink-2: #c6c3d4;
+    --muted: #8d8a9c;
+    --line: #2e2c3a;
+    --brand: #8f83f0;
+    --brand-ink: #14121c;
+    --brand-soft: #2a2647;
+    --good: #45c46f;
+    --good-soft: #15301f;
+    --warn: #f0b13c;
+    --warn-soft: #33270f;
+    --bad: #f07272;
+    --bad-soft: #3a1818;
+    --g1: #3987e5;
+    --g2: #d95926;
+    --g3: #199e70;
+    --g4: #c98500;
+    --g5: #d55181;
+    --g6: #2f9a2f;
+    --g7: #9085e9;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-coin: var(--coin);
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+body {
+  font-family: var(--font-sans);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-pop {
+  animation: pop 0.25s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop {
+    animation: none;
+  }
+}
